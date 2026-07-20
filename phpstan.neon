@@ -11,3 +11,8 @@ parameters:
         - src/
     excludePaths:
         - vendor/
+    # Stuby ACF PRO — twarda zależność core (D-G5), nieobecna w środowisku analizy
+    # PHPStan. Dają realne typowanie funkcji `acf_*` zamiast ignorowania błędów.
+    # Materializacja: `composer update php-stubs/acf-pro-stubs` (vendor/ jest w .gitignore).
+    scanFiles:
+        - vendor/php-stubs/acf-pro-stubs/acf-pro-stubs.php
