@@ -1,0 +1,24 @@
+{
+    "name": "qutlet/qutlet-core",
+    "description": "Qutlet Core — model danych (pola ACF, CPT, glue do WooCommerce).",
+    "type": "wordpress-plugin",
+    "license": "proprietary",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "szepeviktor/phpstan-wordpress": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Qutlet\\Core\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "phpstan": "phpstan analyse"
+    }
+}
