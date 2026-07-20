@@ -17,7 +17,7 @@ przyszłe modyfikacje taksonomii marki (gdyby zaszła potrzeba).
 
 ## Dowód z realnego kodu WooCommerce (10.9.4 tej instalacji)
 
-`product_brand` jest dostarczana przez WooCommerce **bez żadnego feature-flага ani
+`product_brand` jest dostarczana przez WooCommerce **bez żadnego feature-flaga ani
 ustawienia** — nie trzeba nic robić w kodzie, by ją włączyć:
 
 - `woocommerce/src/Internal/Brands.php` → `Brands::is_enabled()` zwraca `true`
