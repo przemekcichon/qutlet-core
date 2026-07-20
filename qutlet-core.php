@@ -63,6 +63,7 @@ function bootstrap(): void {
 	// Slice'y modelu danych (pola ACF, CPT, glue do WooCommerce). Każdy slice
 	// sam wpina swoje hooki — bootstrap tylko go inicjalizuje.
 	ProductCondition\ProductConditionFields::init();
+	AllegroChannel\AllegroChannelFields::init();
 }
 
 /**
