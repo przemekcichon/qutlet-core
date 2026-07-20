@@ -60,10 +60,9 @@ function bootstrap(): void {
 		return; // No-op: bez twardych zależności core niczego nie rejestruje.
 	}
 
-	/*
-	 * TODO (kolejne fazy): tu wpinamy inicjalizację slice'ów modelu danych
-	 * (pola ACF, CPT, glue do WooCommerce) ładowanych z przestrzeni Qutlet\Core.
-	 */
+	// Slice'y modelu danych (pola ACF, CPT, glue do WooCommerce). Każdy slice
+	// sam wpina swoje hooki — bootstrap tylko go inicjalizuje.
+	ProductCondition\ProductConditionFields::init();
 }
 
 /**
