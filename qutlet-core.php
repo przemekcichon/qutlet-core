@@ -1,0 +1,116 @@
+<?php
+/**
+ * Plugin Name:       Qutlet Core
+ * Plugin URI:        https://github.com/przemekcichon/qutlet-core
+ * Description:       Model danych Qutlet: pola ACF, Custom Post Types i glue do WooCommerce. Wystawia dane, z których korzystają motyw i pozostałe wtyczki Qutlet. Bez warstwy graficznej.
+ * Version:           0.1.0
+ * Requires PHP:      7.4
+ * Requires at least: 6.4
+ * Author:            Qutlet
+ * Text Domain:       qutlet-core
+ * License:           proprietary
+ *
+ * @package Qutlet\Core
+ */
+
+declare( strict_types=1 );
+
+namespace Qutlet\Core;
+
+// Blokada bezpośredniego wywołania pliku poza WordPressem.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Wersja wtyczki (jedno źródło prawdy — używać zamiast literału).
+ */
+const VERSION = '0.1.0';
+
+/*
+ * Autoloader Composera (D-G1): ładowany z guardem. Brak `vendor/autoload.php`
+ * NIE jest fatal errorem — pokazujemy notice w adminie i przerywamy bootstrap,
+ * żeby nie wywrócić całego WordPressa.
+ */
+$qutlet_core_autoload = __DIR__ . '/vendor/autoload.php';
+
+if ( ! is_readable( $qutlet_core_autoload ) ) {
+	add_action( 'admin_notices', __NAMESPACE__ . '\\render_missing_autoloader_notice' );
+
+	return;
+}
+
+require_once $qutlet_core_autoload;
+
+// Model danych rejestrujemy dopiero, gdy twarde zależności są obecne (D-G5).
+add_action( 'plugins_loaded', __NAMESPACE__ . '\\bootstrap' );
+
+/**
+ * Punkt wejścia wtyczki. Uruchamiany na `plugins_loaded`.
+ *
+ * FAZA 0 = czysty szkielet: brak slice'ów i rejestracji modelu danych.
+ * Kolejne fazy dokładają tu inicjalizację swoich slice'ów z `src/`.
+ *
+ * @return void
+ */
+function bootstrap(): void {
+	if ( ! dependencies_met() ) {
+		add_action( 'admin_notices', __NAMESPACE__ . '\\render_missing_dependencies_notice' );
+
+		return; // No-op: bez twardych zależności core niczego nie rejestruje.
+	}
+
+	/*
+	 * TODO (kolejne fazy): tu wpinamy inicjalizację slice'ów modelu danych
+	 * (pola ACF, CPT, glue do WooCommerce) ładowanych z przestrzeni Qutlet\Core.
+	 */
+}
+
+/**
+ * Sprawdza obecność twardych zależności core (D-G5): WooCommerce + ACF PRO.
+ *
+ * Weryfikujemy OBECNOŚĆ na `plugins_loaded` (kolejność callbacków to sprawa
+ * dependentów — patrz D-G5). Literały wykrywania sprawdzone w realnym kodzie:
+ * WooCommerce definiuje klasę `WooCommerce`; ACF PRO definiuje stałą `ACF_PRO`
+ * (`acf_is_pro()` to dokładnie `defined( 'ACF_PRO' ) && ACF_PRO`), której wersja
+ * darmowa ACF nie ustawia. Oba testy to literały-stringi — nie wymagają stubów.
+ *
+ * @return bool True, gdy oba wymagania są aktywne.
+ */
+function dependencies_met(): bool {
+	return class_exists( 'WooCommerce' ) && defined( 'ACF_PRO' );
+}
+
+/**
+ * Notice w adminie: brak autoloadera Composera.
+ *
+ * @return void
+ */
+function render_missing_autoloader_notice(): void {
+	$message = __(
+		'Qutlet Core: brak autoloadera Composera (vendor/autoload.php). Uruchom „composer install" w katalogu wtyczki.',
+		'qutlet-core'
+	);
+
+	printf(
+		'<div class="notice notice-error"><p>%s</p></div>',
+		esc_html( $message )
+	);
+}
+
+/**
+ * Notice w adminie: brak twardych zależności (WooCommerce / ACF PRO).
+ *
+ * @return void
+ */
+function render_missing_dependencies_notice(): void {
+	$message = __(
+		'Qutlet Core wymaga aktywnych wtyczek WooCommerce oraz Advanced Custom Fields PRO. Do czasu ich aktywacji wtyczka nie robi nic.',
+		'qutlet-core'
+	);
+
+	printf(
+		'<div class="notice notice-error"><p>%s</p></div>',
+		esc_html( $message )
+	);
+}
