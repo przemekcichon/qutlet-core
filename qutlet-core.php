@@ -64,6 +64,7 @@ function bootstrap(): void {
 	// sam wpina swoje hooki — bootstrap tylko go inicjalizuje.
 	ProductCondition\ProductConditionFields::init();
 	AllegroChannel\AllegroChannelFields::init();
+	ReadingTime\ReadingTimeMeta::init();
 }
 
 /**
