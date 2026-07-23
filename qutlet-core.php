@@ -83,6 +83,10 @@ function bootstrap(): void {
 	// (qutlet-allegro, P-6.1b) — core wystawia tylko powierzchnię danych.
 	Pricing\DiscountRateSettingsPage::init();
 	Pricing\ProductDiscountRateField::init();
+
+	// OfferSync (P-6.2a): mostek zdarzeń stanu zamówienia Woo → akcja domenowa
+	// (D-6.G3). Transfer do Allegro robi konsument (qutlet-allegro, P-6.2b).
+	OfferSync\StockEvents::init();
 }
 
 /**
