@@ -73,6 +73,10 @@ function bootstrap(): void {
 
 	// ProductInfo (P-5.3): podgląd warstwy surowej w adminie (metabox, read-only).
 	ProductInfo\RawLayerMetaBox::init();
+
+	// AllegroLink (P-5.2b): dyskretne pola nie-Woo z mappingu (id oferty, MPN,
+	// kategoria Allegro + ścieżka) — prywatne meta, wypełnia sync (FAZA 6).
+	AllegroLink\AllegroLinkMeta::init();
 }
 
 /**
