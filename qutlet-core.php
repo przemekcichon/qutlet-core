@@ -70,6 +70,9 @@ function bootstrap(): void {
 	// (opis ACF). Specyfikacja przerobiona = natywne atrybuty WC (bez rejestracji).
 	ProductInfo\RawLayerMeta::init();
 	ProductInfo\RewrittenFields::init();
+
+	// ProductInfo (P-5.3): podgląd warstwy surowej w adminie (metabox, read-only).
+	ProductInfo\RawLayerMetaBox::init();
 }
 
 /**
