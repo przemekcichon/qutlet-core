@@ -65,6 +65,11 @@ function bootstrap(): void {
 	ProductCondition\ProductConditionFields::init();
 	AllegroChannel\AllegroChannelFields::init();
 	ReadingTime\ReadingTimeMeta::init();
+
+	// ProductInfo (P-5.1b): warstwa surowa (prywatne meta z Allegro) + przerobiona
+	// (opis ACF). Specyfikacja przerobiona = natywne atrybuty WC (bez rejestracji).
+	ProductInfo\RawLayerMeta::init();
+	ProductInfo\RewrittenFields::init();
 }
 
 /**
