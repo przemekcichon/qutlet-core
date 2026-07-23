@@ -77,6 +77,12 @@ function bootstrap(): void {
 	// AllegroLink (P-5.2b): dyskretne pola nie-Woo z mappingu (id oferty, MPN,
 	// kategoria Allegro + ścieżka) — prywatne meta, wypełnia sync (FAZA 6).
 	AllegroLink\AllegroLinkMeta::init();
+
+	// Pricing (P-6.1a): globalna stawka rabatu (opcja + strona pod menu Woo) i
+	// nadpisanie per produkt (zakładka General). Formułę ceny stosuje import
+	// (qutlet-allegro, P-6.1b) — core wystawia tylko powierzchnię danych.
+	Pricing\DiscountRateSettingsPage::init();
+	Pricing\ProductDiscountRateField::init();
 }
 
 /**
