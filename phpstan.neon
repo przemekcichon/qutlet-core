@@ -11,8 +11,10 @@ parameters:
         - src/
     excludePaths:
         - vendor/
-    # Stuby ACF PRO — twarda zależność core (D-G5), nieobecna w środowisku analizy
-    # PHPStan. Dają realne typowanie funkcji `acf_*` zamiast ignorowania błędów.
-    # Materializacja: `composer update php-stubs/acf-pro-stubs` (vendor/ jest w .gitignore).
+    # Stuby ACF PRO i WooCommerce — twarde zależności core (D-G5), nieobecne w
+    # środowisku analizy PHPStan. Dają realne typowanie (`acf_*`, `WC_Product`,
+    # `wc_format_decimal`, `woocommerce_wp_text_input`) zamiast ignorowania błędów.
+    # Materializacja: `composer update php-stubs/*` (vendor/ jest w .gitignore).
     scanFiles:
         - vendor/php-stubs/acf-pro-stubs/acf-pro-stubs.php
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
