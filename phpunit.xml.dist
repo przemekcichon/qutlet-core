@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Harness testów jednostkowych qutlet-core (pierwszy w tym repo, P-6.5b).
+
+    Testy są BEZ SIECI i BEZ WordPressa: pokrywają czyste funkcje slice'ów
+    (dziś OrderSync\OrderStatuses — wstawianie/dołączanie na listach statusów),
+    które nie dotykają runtime WP. Bootstrap to sam autoloader Composera — żadnego
+    ładowania rdzenia WP. Gdy późniejszy punkt wprowadzi test wymagający WP,
+    dostanie osobny testsuite z własnym bootstrapem (wzorzec z qutlet-allegro).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
