@@ -87,6 +87,11 @@ function bootstrap(): void {
 	// OfferSync (P-6.2a): mostek zdarzeń stanu zamówienia Woo → akcja domenowa
 	// (D-6.G3). Transfer do Allegro robi konsument (qutlet-allegro, P-6.2b).
 	OfferSync\StockEvents::init();
+
+	// OrderSync (P-6.5b): rejestracja własnego statusu zamówienia `wc-shipped`
+	// („Wysłane") — glue do WooCommerce (D-6.5.5). Ustawia go pull statusów
+	// Allegro→Woo (qutlet-allegro, P-6.5c); core tylko rejestruje status.
+	OrderSync\OrderStatuses::init();
 }
 
 /**
