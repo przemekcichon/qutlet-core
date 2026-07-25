@@ -27,10 +27,11 @@ use WP_Post;
  * - `RawLayerMeta::META_SPECIFICATION_RAW` — specyfikacja, lista {etykieta, wartosc}.
  * - `RawLayerMeta::META_OFFER`             — pełna oferta JSON verbatim (wgląd na żądanie).
  *
- * Bezpieczeństwo renderu: opis to NIEZAUFANY HTML z Allegro → wyświetlamy przez
- * `esc_html()` (podgląd surowego źródła, XSS-safe), NIE renderujemy go jako HTML.
- * JSON i wartości specyfikacji też przez `esc_html()`. To podgląd bajtów warstwy
- * surowej, nie sformatowana prezentacja.
+ * Bezpieczeństwo renderu: opis to NIEZAUFANY HTML z Allegro. Interpretujemy go
+ * (czytelne formatowanie zamiast surowych znaczników), ale przez `wp_kses_post()`
+ * — ten sam allowlist, co dla treści postów, więc `<script>`, atrybuty `on*` i
+ * cokolwiek poza dozwolonym zestawem jest odcinane. JSON i wartości specyfikacji
+ * nadal przez `esc_html()` — to podgląd surowych bajtów, nie prozy.
  */
 final class RawLayerMetaBox {
 
@@ -107,10 +108,14 @@ final class RawLayerMetaBox {
 	}
 
 	/**
-	 * Renderuje opis prozą (surowy HTML z Allegro) — przez `esc_html`, w bloku z
-	 * zachowaniem odstępów. Puste → nota o braku.
+	 * Renderuje opis prozą (surowy HTML z Allegro) — zinterpretowany jako HTML
+	 * przez `wp_kses_post()` (ten sam allowlist co treść postów: bezpieczne
+	 * formatowanie przechodzi, `<script>`/atrybuty `on*`/reszta poza allowlistą
+	 * jest odcinana). Wcześniej pokazywaliśmy surowe znaczniki przez `esc_html()`
+	 * — czytelne jako podgląd bajtów, ale nieczytelne jako proza; właściciel
+	 * poprosił o zinterpretowany widok. Puste → nota o braku.
 	 *
-	 * @param string $description Surowy opis prozą.
+	 * @param string $description Surowy opis prozą (HTML z Allegro).
 	 * @return void
 	 */
 	private static function render_description( string $description ): void {
@@ -123,8 +128,8 @@ final class RawLayerMetaBox {
 		}
 
 		printf(
-			'<div style="max-height:20em;overflow:auto;padding:.75em;border:1px solid #dcdcde;background:#fff;white-space:pre-wrap;word-break:break-word">%s</div>',
-			esc_html( $description )
+			'<div style="max-height:20em;overflow:auto;padding:.75em;border:1px solid #dcdcde;background:#fff;word-break:break-word">%s</div>',
+			wp_kses_post( $description )
 		);
 	}
 
