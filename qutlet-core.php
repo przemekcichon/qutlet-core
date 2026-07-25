@@ -92,6 +92,10 @@ function bootstrap(): void {
 	// („Wysłane") — glue do WooCommerce (D-6.5.5). Ustawia go pull statusów
 	// Allegro→Woo (qutlet-allegro, P-6.5c); core tylko rejestruje status.
 	OrderSync\OrderStatuses::init();
+
+	// AiRewrite (P-7.2a): opcjonalny override promptu AI per produkt (D-7.G6 —
+	// core rejestruje pole, logikę generacji niesie qutlet-ai, ta sama nazwa slice'a).
+	AiRewrite\PromptOverrideField::init();
 }
 
 /**
