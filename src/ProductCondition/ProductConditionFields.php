@@ -1,6 +1,6 @@
 <?php
 /**
- * Slice ProductCondition — rejestracja pól ACF produktu (P-1.2).
+ * Slice ProductCondition — rejestracja pól ACF produktu (P-1.2, P-9.2).
  *
  * @package Qutlet\Core
  */
@@ -13,9 +13,14 @@ namespace Qutlet\Core\ProductCondition;
  * Rejestruje grupę pól ACF „stan produktu" na produkcie WooCommerce.
  *
  * Pola (literały z `docs/kontrakt-danych.md` §2 — VERBATIM, case-sensitive):
- * - `klasa_stanu`          — select A/B/C/D, wymagane.
- * - `cena_rynkowa_nowego`  — number (PLN), opcjonalne.
- * - `zawartosc_zestawu`    — WYSIWYG, opcjonalne.
+ * - `klasa_stanu`                 — select A/B/C/D, wymagane.
+ * - `cena_rynkowa_nowego`         — number (PLN), opcjonalne.
+ * - `zawartosc_zestawu_pozycje`   — repeater (sub-pola `zdjecie`/`etykieta`/
+ *   `w_zestawie`), opcjonalne. Zastępuje pole WYSIWYG `zawartosc_zestawu`
+ *   z P-1.2 (D-9.2.1) — ground-truth P-8.2c ujawnił, że WYSIWYG
+ *   (`media_upload=0`, `toolbar=basic`) nie udźwignie ani zdjęć karuzeli, ani
+ *   struktury pozycja+flaga wymaganej przez `.ship-grid` (`produkt.html:142-173`).
+ *   Stare pole nigdy nie miało danych (produkt niewystawiony) — bez migracji.
  *
  * Mechanizm: `acf_add_local_field_group()` w PHP (decyzja P-1.2). Kod = źródło
  * prawdy; pola są wersjonowane i nie zależą od zapisywalnego folderu acf-json.
@@ -88,15 +93,45 @@ final class ProductConditionFields {
 						'placeholder'  => '',
 					),
 					array(
-						'key'          => 'field_qutlet_zawartosc_zestawu',
-						'label'        => __( 'Co w przesyłce', 'qutlet-core' ),
-						'name'         => 'zawartosc_zestawu',
-						'type'         => 'wysiwyg',
-						'instructions' => __( 'Ręcznie spisana zawartość zestawu (lista „co otrzymasz"). Puste → motyw nie renderuje zakładki „Co w przesyłce".', 'qutlet-core' ),
-						'required'     => 0,
-						'tabs'         => 'all',
-						'toolbar'      => 'basic',
-						'media_upload' => 0,
+						'key'           => 'field_qutlet_zawartosc_zestawu_pozycje',
+						'label'         => __( 'Co w przesyłce', 'qutlet-core' ),
+						'name'          => 'zawartosc_zestawu_pozycje',
+						'type'          => 'repeater',
+						'instructions'  => __( 'Pozycje zestawu — jeden wiersz = jedna pozycja. Zdjęcie zasila karuzelę „Co w przesyłce" (brak zdjęcia → pozycja trafia tylko do checklisty). Pusty repeater → motyw nie renderuje zakładki „Co w przesyłce".', 'qutlet-core' ),
+						'required'      => 0,
+						'layout'        => 'table',
+						'button_label'  => __( 'Dodaj pozycję', 'qutlet-core' ),
+						'sub_fields'    => array(
+							array(
+								'key'           => 'field_qutlet_zawartosc_zestawu_zdjecie',
+								'label'         => __( 'Zdjęcie', 'qutlet-core' ),
+								'name'          => 'zdjecie',
+								'type'          => 'image',
+								'instructions'  => __( 'Opcjonalne — bez zdjęcia pozycja pojawia się tylko w checkliście, nie w karuzeli.', 'qutlet-core' ),
+								'required'      => 0,
+								'return_format' => 'id',
+								'preview_size'  => 'thumbnail',
+								'library'       => 'all',
+							),
+							array(
+								'key'          => 'field_qutlet_zawartosc_zestawu_etykieta',
+								'label'        => __( 'Etykieta', 'qutlet-core' ),
+								'name'         => 'etykieta',
+								'type'         => 'text',
+								'instructions' => '',
+								'required'     => 1,
+							),
+							array(
+								'key'           => 'field_qutlet_zawartosc_zestawu_w_zestawie',
+								'label'         => __( 'W zestawie', 'qutlet-core' ),
+								'name'          => 'w_zestawie',
+								'type'          => 'true_false',
+								'instructions'  => __( 'Zaznaczone = pozycja jest w zestawie (ikona check); odznaczone = brakuje (ikona cross).', 'qutlet-core' ),
+								'required'      => 0,
+								'default_value' => 1,
+								'ui'            => 1,
+							),
+						),
 					),
 				),
 				'location'              => array(
