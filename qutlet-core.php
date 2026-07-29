@@ -96,6 +96,11 @@ function bootstrap(): void {
 	// AiRewrite (P-7.2a): opcjonalny override promptu AI per produkt (D-7.G6 —
 	// core rejestruje pole, logikę generacji niesie qutlet-ai, ta sama nazwa slice'a).
 	AiRewrite\PromptOverrideField::init();
+
+	// ProductFilters (P-8.3b, D-8.3b.2): modyfikacja głównego zapytania archiwum
+	// (filtr klasy stanu, sortowanie „Największy rabat") + liczniki facetów/granice
+	// ceny. Render formularza — qutlet-theme, ta sama nazwa slice'a.
+	ProductFilters\ProductFilterQuery::init();
 }
 
 /**
