@@ -50,8 +50,30 @@ final class ProductFilterQuery {
 	/** ACF pole ceny rynkowej nowego (kontrakt §2, VERBATIM) — baza rabatu. */
 	public const MARKET_PRICE_META_KEY = 'cena_rynkowa_nowego';
 
-	/** GET param taksonomii marki (kontrakt §3, `product_brand` — natywny query_var Woo). */
-	public const BRAND_PARAM = 'product_brand';
+	/**
+	 * Literał taksonomii marki (kontrakt §3, VERBATIM — `product_brand`, natywna
+	 * taksonomia Woo). Używany do budowy tax_query i zapytań `get_terms()`.
+	 */
+	public const BRAND_TAXONOMY = 'product_brand';
+
+	/**
+	 * Nazwa GET param filtra marki — CELOWO INNA niż `BRAND_TAXONOMY`.
+	 *
+	 * Runtime na Localu (2026-07-29) ujawnił, że użycie DOKŁADNIE nazwy
+	 * zarejestrowanego `query_var` taksonomii (`product_brand`) jako parametru
+	 * GET na archiwum INNEJ taksonomii (`product_cat`) nie działa jak zwykły,
+	 * dodatkowy filtr — WordPress w `WP::parse_request()`/pierwszym
+	 * `WP_Query::parse_query()` (PRZED `pre_get_posts`) przełącza WTEDY cały
+	 * kontekst zapytania na archiwum marki (zmierzone: body class
+	 * `tax-product_brand term-3mk`, `is_product_category()` przestaje być
+	 * `true`, kategoria ginie, brak `.grid-3`/`.toolbar` — bo theme nie ma
+	 * szablonu `taxonomy-product_brand.html`). Dlatego marka NIE jest już
+	 * (wbrew pierwotnemu D-8.3b.1) filtrowana przez sam natywny query_var —
+	 * dostaje WŁASNY hook (`apply_brand_filter()`), analogicznie do klasy
+	 * stanu, pod parametrem, który NIE koliduje z żadnym zarejestrowanym
+	 * query_var.
+	 */
+	public const BRAND_PARAM = 'qutlet_brand';
 
 	/** Wartość `orderby` dla sortowania „Największy rabat" (custom — brak odpowiednika w Woo). */
 	public const DISCOUNT_ORDERBY = 'save';
@@ -70,6 +92,7 @@ final class ProductFilterQuery {
 	 * @return void
 	 */
 	public static function init(): void {
+		add_action( 'woocommerce_product_query', array( self::class, 'apply_brand_filter' ) );
 		add_action( 'woocommerce_product_query', array( self::class, 'apply_condition_filter' ) );
 		add_action( 'woocommerce_product_query', array( self::class, 'apply_discount_sort' ) );
 	}
@@ -207,6 +230,24 @@ final class ProductFilterQuery {
 	 * automatyczny tax_query kategorii/marki (natywny mechanizm WP_Query) i
 	 * nasz `meta_query` klasy stanu, jeśli aktywny.
 	 *
+	 * Runtime na Localu (2026-07-29, kategoria `telefony-akcesoria`, 148
+	 * produktów) ujawnił, że `$wp_query->query_vars['tax_query']` jest PUSTE
+	 * dla zapytań archiwum taksonomii/atrybutu — `WP_Query::parse_tax_query()`
+	 * buduje tax_query z `cat`/`product_cat`/`product_brand` itd. WYŁĄCZNIE
+	 * do lokalnej zmiennej i zapisuje wynik do `$this->tax_query` (obiekt
+	 * `WP_Tax_Query`), NIGDY z powrotem do `$query_vars['tax_query']`
+	 * (zweryfikowane w `wp-includes/class-wp-query.php:1401` — brak
+	 * jakiegokolwiek przypisania do `$query_vars['tax_query']` w całej
+	 * funkcji). Odczyt z `query_vars` dawał więc ZAWSZE pusty tax_query →
+	 * liczniki facetów i granice ceny liczyły się na CAŁYM sklepie, nie w
+	 * obrębie bieżącej kategorii (zmierzone: marka „3mk" pokazywała 29 —
+	 * cały sklep — zamiast 25 w tej kategorii; granica ceny 3599 zł zamiast
+	 * 269,10 zł). Poprawka: czytamy rozwiązany tax_query z obiektu
+	 * `$main->tax_query->queries` (publiczna właściwość `WP_Tax_Query`), NIE
+	 * z `query_vars`. `meta_query` NIE ma tego problemu — nasz własny wiersz
+	 * (`apply_condition_filter()`) trafia tam przez `$q->set('meta_query', …)`,
+	 * czyli wprost do `query_vars['meta_query']`.
+	 *
 	 * @return array{tax_query: array<int, mixed>, meta_query: array<int, mixed>}
 	 */
 	private static function main_query_parts(): array {
@@ -220,10 +261,16 @@ final class ProductFilterQuery {
 			$main = $GLOBALS['wp_query'];
 		}
 
+		$tax_query = array();
+
+		if ( $main->tax_query instanceof \WP_Tax_Query ) {
+			$tax_query = $main->tax_query->queries;
+		}
+
 		$vars = $main->query_vars;
 
 		return array(
-			'tax_query'  => isset( $vars['tax_query'] ) && is_array( $vars['tax_query'] ) ? $vars['tax_query'] : array(),
+			'tax_query'  => $tax_query,
 			'meta_query' => isset( $vars['meta_query'] ) && is_array( $vars['meta_query'] ) ? $vars['meta_query'] : array(),
 		);
 	}
@@ -323,6 +370,43 @@ final class ProductFilterQuery {
 	}
 
 	/**
+	 * Dokłada `tax_query` dla marki do głównego zapytania archiwum, gdy GET
+	 * niesie choć jeden zaznaczony slug. Wiersz oznaczony
+	 * `qutlet_brand_filter`, żeby liczniki facetu marki mogły go wykluczyć
+	 * przy liczeniu WŁASNYCH liczników (patrz `brand_facets()`).
+	 *
+	 * Własny hook zamiast natywnego mechanizmu query_var taksonomii — patrz
+	 * `BRAND_PARAM` (docblok stałej, D-8.3b.3): `?product_brand=…` na
+	 * archiwum `product_cat` przełącza CAŁY kontekst zapytania na archiwum
+	 * marki zamiast dołożyć filtr. `$q->set('tax_query', …)` w tym miejscu
+	 * (hook `woocommerce_product_query`, czyli `pre_get_posts`) działa
+	 * poprawnie, bo `WP_Query::get_posts()` PONOWNIE woła
+	 * `parse_tax_query()` już PO `pre_get_posts` (`class-wp-query.php:2292`,
+	 * inaczej niż pierwsze wywołanie w `parse_query()` PRZED `pre_get_posts`)
+	 * — więc SQL faktycznie uwzględnia ten wiersz, w przeciwieństwie do
+	 * automatycznego tax_query z `query_var`, który jest ustalany wcześniej.
+	 *
+	 * @param \WP_Query $q Główne zapytanie archiwum (hook `woocommerce_product_query`).
+	 * @return void
+	 */
+	public static function apply_brand_filter( \WP_Query $q ): void {
+		$slugs = self::selected_brand_slugs();
+
+		if ( ! $slugs ) {
+			return;
+		}
+
+		$tax_query   = (array) $q->get( 'tax_query' );
+		$tax_query[] = array(
+			'taxonomy'            => self::BRAND_TAXONOMY,
+			'field'               => 'slug',
+			'terms'               => $slugs,
+			'qutlet_brand_filter' => true,
+		);
+		$q->set( 'tax_query', $tax_query );
+	}
+
+	/**
 	 * Facety marki (kontrakt §3, `product_brand`) z licznikami w bieżącym
 	 * kontekście archiwum, WYKLUCZAJĄC własny filtr marki (żeby zaznaczenie
 	 * jednej marki nie zerowało liczników pozostałych — cross-filtering,
@@ -337,14 +421,15 @@ final class ProductFilterQuery {
 			return array();
 		}
 
-		$parts     = self::main_query_parts();
-		$tax_query = array_values(
-			array_filter(
-				$parts['tax_query'],
-				static function ( $row ) {
-					return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_PARAM === $row['taxonomy'] );
-				}
-			)
+		$parts = self::main_query_parts();
+		// BEZ array_values(): tax_query może nieść string-owy klucz `relation`
+		// (AND/OR) obok wierszy numerycznych — przenumerowanie zgubiłoby go,
+		// psując semantykę przy ponownym parsowaniu w filtered_sql().
+		$tax_query = array_filter(
+			$parts['tax_query'],
+			static function ( $row ) {
+				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_PARAM === $row['taxonomy'] );
+			}
 		);
 		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
 
@@ -409,14 +494,14 @@ final class ProductFilterQuery {
 	public static function condition_facets(): array {
 		global $wpdb;
 
-		$parts      = self::main_query_parts();
-		$meta_query = array_values(
-			array_filter(
-				$parts['meta_query'],
-				static function ( $row ) {
-					return ! ( is_array( $row ) && ! empty( $row['qutlet_condition_filter'] ) );
-				}
-			)
+		$parts = self::main_query_parts();
+		// BEZ array_values() — patrz komentarz w brand_facets() (ta sama
+		// zasada dotyczy `relation` w meta_query).
+		$meta_query = array_filter(
+			$parts['meta_query'],
+			static function ( $row ) {
+				return ! ( is_array( $row ) && ! empty( $row['qutlet_condition_filter'] ) );
+			}
 		);
 		$sql = self::filtered_sql( $parts['tax_query'], $meta_query );
 
