@@ -428,7 +428,7 @@ final class ProductFilterQuery {
 		$tax_query = array_filter(
 			$parts['tax_query'],
 			static function ( $row ) {
-				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_PARAM === $row['taxonomy'] );
+				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_TAXONOMY === $row['taxonomy'] );
 			}
 		);
 		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
@@ -438,7 +438,7 @@ final class ProductFilterQuery {
 			"SELECT tt.term_id AS term_id, COUNT(DISTINCT {$wpdb->posts}.ID) AS product_count
 			FROM {$wpdb->posts}
 			INNER JOIN {$wpdb->term_relationships} qutlet_brand_tr ON {$wpdb->posts}.ID = qutlet_brand_tr.object_id
-			INNER JOIN {$wpdb->term_taxonomy} tt ON qutlet_brand_tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = '" . esc_sql( self::BRAND_PARAM ) . "'
+			INNER JOIN {$wpdb->term_taxonomy} tt ON qutlet_brand_tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = '" . esc_sql( self::BRAND_TAXONOMY ) . "'
 			{$sql['join']}
 			WHERE {$wpdb->posts}.post_type = 'product' AND {$wpdb->posts}.post_status = 'publish'
 			{$sql['where']}
@@ -453,7 +453,7 @@ final class ProductFilterQuery {
 
 		$terms = get_terms(
 			array(
-				'taxonomy'   => self::BRAND_PARAM,
+				'taxonomy'   => self::BRAND_TAXONOMY,
 				'hide_empty' => true,
 			)
 		);
