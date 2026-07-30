@@ -1,9 +1,13 @@
 <?php
 /**
- * Slice ProductFilters — zapytanie: filtrowanie (marka / klasa stanu / cena)
- * + sortowanie archiwum produktu (P-8.3b — punkt wielorepowy; ta sama nazwa
- * slice'a w `qutlet-theme`, które renderuje formularz na podstawie danych
- * stąd, patrz `inc/features/ProductFilters/ProductFilters.php` w motywie).
+ * Slice ProductFilters — zapytanie: filtrowanie (marka / kategoria / klasa
+ * stanu / cena) + sortowanie archiwum produktu (P-8.3b + P-8.3c — punkty
+ * wielorepowe; ta sama nazwa slice'a w `qutlet-theme`, które renderuje
+ * formularz na podstawie danych stąd, patrz
+ * `inc/features/ProductFilters/ProductFilters.php` w motywie). Facet
+ * kategorii (P-8.3c, `CATEGORY_PARAM`) dotyczy WYŁĄCZNIE Shopu (widok
+ * „wszystkie kategorie naraz") — na archiwum jednej kategorii kategoria jest
+ * już ustalona przez URL (D-8.3c.2, theme decyduje kiedy wołać `category_facets()`).
  *
  * Granica core↔theme (D-8.3b.2, decyzja użytkownika po niezależnej recenzji
  * P-8.3b): logika modyfikująca GŁÓWNE zapytanie WooCommerce (co i w jakiej
@@ -75,6 +79,25 @@ final class ProductFilterQuery {
 	 */
 	public const BRAND_PARAM = 'qutlet_brand';
 
+	/**
+	 * Literał taksonomii kategorii (kontrakt §1, VERBATIM — `product_cat`,
+	 * natywna taksonomia Woo). Używany do budowy tax_query i `get_terms()` dla
+	 * facetu „Kategoria" (P-8.3c, WYŁĄCZNIE na Shopie — patrz `CATEGORY_PARAM`).
+	 */
+	public const CATEGORY_TAXONOMY = 'product_cat';
+
+	/**
+	 * Nazwa GET param filtra kategorii — CELOWO INNA niż `CATEGORY_TAXONOMY`,
+	 * z tego samego powodu co `BRAND_PARAM` (docblok wyżej, D-8.3b.3):
+	 * `product_cat` ma zarejestrowany `query_var`, więc użycie go wprost jako
+	 * GET param na Shopie przełączałoby kontekst zapytania na archiwum
+	 * kategorii (`is_product_category()`) zamiast dołożyć facet do `is_shop()`.
+	 * Facet „Kategoria" renderuje się WYŁĄCZNIE na Shopie (P-8.3c, D-8.3c.2) —
+	 * na archiwum jednej kategorii (`taxonomy-product_cat.html`, P-8.3b)
+	 * kategoria jest już ustalona przez URL.
+	 */
+	public const CATEGORY_PARAM = 'qutlet_category';
+
 	/** Wartość `orderby` dla sortowania „Największy rabat" (custom — brak odpowiednika w Woo). */
 	public const DISCOUNT_ORDERBY = 'save';
 
@@ -93,6 +116,7 @@ final class ProductFilterQuery {
 	 */
 	public static function init(): void {
 		add_action( 'woocommerce_product_query', array( self::class, 'apply_brand_filter' ) );
+		add_action( 'woocommerce_product_query', array( self::class, 'apply_category_filter' ) );
 		add_action( 'woocommerce_product_query', array( self::class, 'apply_condition_filter' ) );
 		add_action( 'woocommerce_product_query', array( self::class, 'apply_discount_sort' ) );
 	}
@@ -425,10 +449,15 @@ final class ProductFilterQuery {
 		// BEZ array_values(): tax_query może nieść string-owy klucz `relation`
 		// (AND/OR) obok wierszy numerycznych — przenumerowanie zgubiłoby go,
 		// psując semantykę przy ponownym parsowaniu w filtered_sql().
+		// Wykluczamy PO FLADZE `qutlet_brand_filter` (jak `condition_facets()`
+		// wyklucza po `qutlet_condition_filter`), NIE po nazwie taksonomii —
+		// wykluczanie po taksonomii usunęłoby też PRAWDZIWY, natywny tax_query
+		// tej samej taksonomii, gdyby taki kiedyś towarzyszył naszemu filtrowi
+		// w tym samym zapytaniu (recenzja P-8.3c).
 		$tax_query = array_filter(
 			$parts['tax_query'],
 			static function ( $row ) {
-				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_TAXONOMY === $row['taxonomy'] );
+				return ! ( is_array( $row ) && ! empty( $row['qutlet_brand_filter'] ) );
 			}
 		);
 		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
@@ -463,6 +492,135 @@ final class ProductFilterQuery {
 		}
 
 		$selected = self::selected_brand_slugs();
+		$facets   = array();
+
+		foreach ( $terms as $term ) {
+			$count   = $counts[ $term->term_id ] ?? 0;
+			$checked = in_array( $term->slug, $selected, true );
+
+			if ( 0 === $count && ! $checked ) {
+				continue;
+			}
+
+			$facets[] = array(
+				'slug'    => $term->slug,
+				'name'    => $term->name,
+				'count'   => $count,
+				'checked' => $checked,
+			);
+		}
+
+		return $facets;
+	}
+
+	/**
+	 * Zaznaczone sluggi kategorii z GET (`?qutlet_category[]=audio`) — facet
+	 * „Kategoria" (P-8.3c), WYŁĄCZNIE na Shopie (D-8.3c.2, theme decyduje kiedy
+	 * w ogóle woła te metody).
+	 *
+	 * @return array<int, string>
+	 */
+	public static function selected_category_slugs(): array {
+		if ( ! isset( $_GET[ self::CATEGORY_PARAM ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return array();
+		}
+
+		$raw = (array) wp_unslash( $_GET[ self::CATEGORY_PARAM ] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		return array_values( array_filter( array_map( 'sanitize_title', $raw ) ) );
+	}
+
+	/**
+	 * Dokłada `tax_query` dla kategorii do głównego zapytania archiwum, gdy GET
+	 * niesie choć jeden zaznaczony slug. Wiersz oznaczony
+	 * `qutlet_category_filter`, żeby liczniki facetu kategorii mogły go
+	 * wykluczyć przy liczeniu WŁASNYCH liczników (patrz `category_facets()`).
+	 *
+	 * Własny hook zamiast natywnego mechanizmu query_var taksonomii — patrz
+	 * `CATEGORY_PARAM` (docblok stałej, D-8.3c.1): ten sam mechanizm co
+	 * `apply_brand_filter()` (D-8.3b.3 pkt 2) — `?product_cat=…` na Shopie
+	 * przełączyłby CAŁY kontekst zapytania na archiwum kategorii zamiast
+	 * dołożyć filtr.
+	 *
+	 * @param \WP_Query $q Główne zapytanie archiwum (hook `woocommerce_product_query`).
+	 * @return void
+	 */
+	public static function apply_category_filter( \WP_Query $q ): void {
+		$slugs = self::selected_category_slugs();
+
+		if ( ! $slugs ) {
+			return;
+		}
+
+		$tax_query   = (array) $q->get( 'tax_query' );
+		$tax_query[] = array(
+			'taxonomy'               => self::CATEGORY_TAXONOMY,
+			'field'                  => 'slug',
+			'terms'                  => $slugs,
+			'qutlet_category_filter' => true,
+		);
+		$q->set( 'tax_query', $tax_query );
+	}
+
+	/**
+	 * Facety kategorii (kontrakt §1, `product_cat`) z licznikami w bieżącym
+	 * kontekście archiwum, WYKLUCZAJĄC własny filtr kategorii (żeby
+	 * zaznaczenie jednej kategorii nie zerowało liczników pozostałych —
+	 * cross-filtering, ten sam wzorzec co `brand_facets()`/`condition_facets()`
+	 * — wykluczenie po fladze `qutlet_category_filter`, NIE po nazwie
+	 * taksonomii, żeby nie zdjąć przy okazji prawdziwego, scope'ującego
+	 * tax_query tej samej taksonomii, gdyby taki kiedyś towarzyszył temu
+	 * wywołaniu). Wołane WYŁĄCZNIE na Shopie (D-8.3c.2) — na archiwum jednej
+	 * kategorii kategoria jest już ustalona przez URL.
+	 *
+	 * @return array<int, array{slug: string, name: string, count: int, checked: bool}>
+	 */
+	public static function category_facets(): array {
+		global $wpdb;
+
+		$parts = self::main_query_parts();
+		// BEZ array_values() — patrz komentarz w brand_facets() (ta sama
+		// zasada dotyczy `relation` w tax_query). Wykluczamy PO FLADZE
+		// `qutlet_category_filter`, NIE po nazwie taksonomii — patrz komentarz
+		// w `brand_facets()` po pełne uzasadnienie (recenzja P-8.3c).
+		$tax_query = array_filter(
+			$parts['tax_query'],
+			static function ( $row ) {
+				return ! ( is_array( $row ) && ! empty( $row['qutlet_category_filter'] ) );
+			}
+		);
+		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- liczniki facetu do renderu szuflady, liczone z tax/meta query WP_Query.
+		$rows = $wpdb->get_results(
+			"SELECT tt.term_id AS term_id, COUNT(DISTINCT {$wpdb->posts}.ID) AS product_count
+			FROM {$wpdb->posts}
+			INNER JOIN {$wpdb->term_relationships} qutlet_category_tr ON {$wpdb->posts}.ID = qutlet_category_tr.object_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON qutlet_category_tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = '" . esc_sql( self::CATEGORY_TAXONOMY ) . "'
+			{$sql['join']}
+			WHERE {$wpdb->posts}.post_type = 'product' AND {$wpdb->posts}.post_status = 'publish'
+			{$sql['where']}
+			GROUP BY tt.term_id"
+		);
+
+		$counts = array();
+
+		foreach ( (array) $rows as $row ) {
+			$counts[ (int) $row->term_id ] = (int) $row->product_count;
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => self::CATEGORY_TAXONOMY,
+				'hide_empty' => true,
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		$selected = self::selected_category_slugs();
 		$facets   = array();
 
 		foreach ( $terms as $term ) {
