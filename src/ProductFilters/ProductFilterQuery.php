@@ -449,10 +449,15 @@ final class ProductFilterQuery {
 		// BEZ array_values(): tax_query może nieść string-owy klucz `relation`
 		// (AND/OR) obok wierszy numerycznych — przenumerowanie zgubiłoby go,
 		// psując semantykę przy ponownym parsowaniu w filtered_sql().
+		// Wykluczamy PO FLADZE `qutlet_brand_filter` (jak `condition_facets()`
+		// wyklucza po `qutlet_condition_filter`), NIE po nazwie taksonomii —
+		// wykluczanie po taksonomii usunęłoby też PRAWDZIWY, natywny tax_query
+		// tej samej taksonomii, gdyby taki kiedyś towarzyszył naszemu filtrowi
+		// w tym samym zapytaniu (recenzja P-8.3c).
 		$tax_query = array_filter(
 			$parts['tax_query'],
 			static function ( $row ) {
-				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::BRAND_TAXONOMY === $row['taxonomy'] );
+				return ! ( is_array( $row ) && ! empty( $row['qutlet_brand_filter'] ) );
 			}
 		);
 		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
@@ -561,11 +566,12 @@ final class ProductFilterQuery {
 	 * Facety kategorii (kontrakt §1, `product_cat`) z licznikami w bieżącym
 	 * kontekście archiwum, WYKLUCZAJĄC własny filtr kategorii (żeby
 	 * zaznaczenie jednej kategorii nie zerowało liczników pozostałych —
-	 * cross-filtering, ten sam wzorzec co `brand_facets()`). Wołane WYŁĄCZNIE
-	 * na Shopie (D-8.3c.2) — na archiwum jednej kategorii kategoria jest już
-	 * ustalona przez URL, a wykluczenie WSZYSTKICH wierszy `product_cat` z
-	 * `main_query_parts()` (poniżej) zdjęłoby wtedy też TĘ, realną, scope'ującą
-	 * kategorię z URL-a.
+	 * cross-filtering, ten sam wzorzec co `brand_facets()`/`condition_facets()`
+	 * — wykluczenie po fladze `qutlet_category_filter`, NIE po nazwie
+	 * taksonomii, żeby nie zdjąć przy okazji prawdziwego, scope'ującego
+	 * tax_query tej samej taksonomii, gdyby taki kiedyś towarzyszył temu
+	 * wywołaniu). Wołane WYŁĄCZNIE na Shopie (D-8.3c.2) — na archiwum jednej
+	 * kategorii kategoria jest już ustalona przez URL.
 	 *
 	 * @return array<int, array{slug: string, name: string, count: int, checked: bool}>
 	 */
@@ -574,11 +580,13 @@ final class ProductFilterQuery {
 
 		$parts = self::main_query_parts();
 		// BEZ array_values() — patrz komentarz w brand_facets() (ta sama
-		// zasada dotyczy `relation` w tax_query).
+		// zasada dotyczy `relation` w tax_query). Wykluczamy PO FLADZE
+		// `qutlet_category_filter`, NIE po nazwie taksonomii — patrz komentarz
+		// w `brand_facets()` po pełne uzasadnienie (recenzja P-8.3c).
 		$tax_query = array_filter(
 			$parts['tax_query'],
 			static function ( $row ) {
-				return ! ( is_array( $row ) && isset( $row['taxonomy'] ) && self::CATEGORY_TAXONOMY === $row['taxonomy'] );
+				return ! ( is_array( $row ) && ! empty( $row['qutlet_category_filter'] ) );
 			}
 		);
 		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
