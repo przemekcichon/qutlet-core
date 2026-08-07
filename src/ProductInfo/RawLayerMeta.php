@@ -1,6 +1,6 @@
 <?php
 /**
- * Slice ProductInfo — rejestracja warstwy SUROWEJ produktu (P-5.1b, nazwa: P-13.2a-core).
+ * Slice ProductInfo — rejestracja warstwy SUROWEJ produktu (P-5.1b; pole nazwy — P-13.2a-core).
  *
  * @package Qutlet\Core
  */
