@@ -8,6 +8,7 @@
     },
     "require-dev": {
         "php-stubs/acf-pro-stubs": "^6.0",
+        "php-stubs/wp-cli-stubs": "^2.12",
         "php-stubs/woocommerce-stubs": "^10.9",
         "phpstan/phpstan": "^2.0",
         "phpunit/phpunit": "^9.6",

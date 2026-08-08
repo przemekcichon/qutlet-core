@@ -101,6 +101,15 @@ function bootstrap(): void {
 	// (filtr klasy stanu, sortowanie „Największy rabat") + liczniki facetów/granice
 	// ceny. Render formularza — qutlet-theme, ta sama nazwa slice'a.
 	ProductFilters\ProductFilterQuery::init();
+
+	/*
+	 * ProductInfo (P-13.3a, D-13.G3): jednorazowy backfill wycofanego pola ACF `opis`
+	 * → natywne `post_content`, na produktach zsynchronizowanych PRZED tym punktem.
+	 * Czysto lokalna operacja — bez API Allegro. Wyłącznie pod WP-CLI.
+	 */
+	if ( defined( 'WP_CLI' ) && \WP_CLI ) {
+		\WP_CLI::add_command( 'qutlet-core backfill-opis-to-content', ProductInfo\BackfillOpisToContentCommand::class );
+	}
 }
 
 /**
