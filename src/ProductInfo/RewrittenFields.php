@@ -1,6 +1,7 @@
 <?php
 /**
- * Slice ProductInfo — rejestracja warstwy PRZEROBIONEJ produktu (P-5.1b; pole podnazwa — P-13.2a-core).
+ * Slice ProductInfo — rejestracja warstwy PRZEROBIONEJ produktu (P-5.1b; pole podnazwa —
+ * P-13.2a-core; pole opis wycofane — P-13.3a).
  *
  * @package Qutlet\Core
  */
@@ -18,12 +19,16 @@ namespace Qutlet\Core\ProductInfo;
  * warstwę (D-8.G1).
  *
  * Zakres rejestracji (kontrakt §9.2):
- * - `opis` — pole ACF WYSIWYG (rich text): user-facing opis produktu. Odczyt motywu:
- *   `get_field('opis')` / `get_post_meta($id, 'opis', true)`. To NIE natywny opis Woo
- *   (`post_content`) — front czyta to pole (warstwa przerobiona).
  * - `podnazwa` — pole ACF text (jedna linia): druga część nazwy, gdy AI rozbije zbyt
  *   długą oryginalną nazwę Allegro (`RawLayerMeta::META_NAME_RAW`) na tytuł
  *   (→ `post_title`) + podnazwę (FAZA 13, P-13.2c). Odczyt motywu: `get_field('podnazwa')`.
+ *
+ * Opis (przerobiony) NIE jest już tu rejestrowany (P-13.3a) — cel zapisu/odczytu opisu
+ * to natywne `post_content` (`the_content()` / `$post->post_content`), nie ACF. Pole ACF
+ * `opis` (`field_qutlet_opis`) istniało do P-13.3a; istniejące wartości migruje jednorazowa
+ * komenda WP-CLI {@see BackfillOpisToContentCommand} (D-13.G3). Motyw (`qutlet-theme`,
+ * `ProductPage`) przechodzi z `get_field('opis')` na natywny opis osobnym, zależnym
+ * punktem (P-13.3c).
  *
  * Specyfikacja przerobiona = **natywne atrybuty produktu WooCommerce**
  * (`_product_attributes`) — glue/sync je zapisuje, motyw renderuje natywnie; core NIE
@@ -62,19 +67,8 @@ final class RewrittenFields {
 		acf_add_local_field_group(
 			array(
 				'key'                   => self::GROUP_KEY,
-				'title'                 => __( 'Qutlet — opis produktu (warstwa przerobiona)', 'qutlet-core' ),
+				'title'                 => __( 'Qutlet — nazwa produktu (warstwa przerobiona)', 'qutlet-core' ),
 				'fields'                => array(
-					array(
-						'key'          => 'field_qutlet_opis',
-						'label'        => __( 'Opis (na stronie produktu)', 'qutlet-core' ),
-						'name'         => 'opis',
-						'type'         => 'wysiwyg',
-						'instructions' => __( 'Finalny opis pokazywany klientowi. Wypełniany przez AI (przeróbka opisu z Allegro) i redagowany ręcznie; sync z Allegro go NIE nadpisuje. Puste → motyw stosuje fallback.', 'qutlet-core' ),
-						'required'     => 0,
-						'tabs'         => 'all',
-						'toolbar'      => 'full',
-						'media_upload' => 1,
-					),
 					array(
 						'key'          => 'field_qutlet_podnazwa',
 						'label'        => __( 'Podnazwa', 'qutlet-core' ),
@@ -99,7 +93,7 @@ final class RewrittenFields {
 				'label_placement'       => 'top',
 				'instruction_placement' => 'label',
 				'active'                => true,
-				'description'           => __( 'Warstwa przerobiona (user-facing) opisu produktu — rejestruje qutlet-core (P-5.1b). Specyfikacja przerobiona = natywne atrybuty WooCommerce.', 'qutlet-core' ),
+				'description'           => __( 'Warstwa przerobiona (user-facing) nazwy produktu — rejestruje qutlet-core (P-13.2a-core). Opis (przerobiony) to natywne post_content (P-13.3a); specyfikacja przerobiona = natywne atrybuty WooCommerce.', 'qutlet-core' ),
 				'show_in_rest'          => 0,
 			)
 		);
