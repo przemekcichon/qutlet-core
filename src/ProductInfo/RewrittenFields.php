@@ -1,6 +1,6 @@
 <?php
 /**
- * Slice ProductInfo — rejestracja warstwy PRZEROBIONEJ produktu (P-5.1b).
+ * Slice ProductInfo — rejestracja warstwy PRZEROBIONEJ produktu (P-5.1b; pole podnazwa — P-13.2a-core).
  *
  * @package Qutlet\Core
  */
@@ -21,6 +21,9 @@ namespace Qutlet\Core\ProductInfo;
  * - `opis` — pole ACF WYSIWYG (rich text): user-facing opis produktu. Odczyt motywu:
  *   `get_field('opis')` / `get_post_meta($id, 'opis', true)`. To NIE natywny opis Woo
  *   (`post_content`) — front czyta to pole (warstwa przerobiona).
+ * - `podnazwa` — pole ACF text (jedna linia): druga część nazwy, gdy AI rozbije zbyt
+ *   długą oryginalną nazwę Allegro (`RawLayerMeta::META_NAME_RAW`) na tytuł
+ *   (→ `post_title`) + podnazwę (FAZA 13, P-13.2c). Odczyt motywu: `get_field('podnazwa')`.
  *
  * Specyfikacja przerobiona = **natywne atrybuty produktu WooCommerce**
  * (`_product_attributes`) — glue/sync je zapisuje, motyw renderuje natywnie; core NIE
@@ -71,6 +74,14 @@ final class RewrittenFields {
 						'tabs'         => 'all',
 						'toolbar'      => 'full',
 						'media_upload' => 1,
+					),
+					array(
+						'key'          => 'field_qutlet_podnazwa',
+						'label'        => __( 'Podnazwa', 'qutlet-core' ),
+						'name'         => 'podnazwa',
+						'type'         => 'text',
+						'instructions' => __( 'Druga część nazwy, gdy AI rozbije zbyt długą oryginalną nazwę Allegro na tytuł (post_title) + podnazwę. Redagowalna ręcznie; sync z Allegro jej NIE nadpisuje. Puste → motyw pokazuje sam tytuł.', 'qutlet-core' ),
+						'required'     => 0,
 					),
 				),
 				'location'              => array(

@@ -1,6 +1,6 @@
 <?php
 /**
- * Slice ProductInfo — rejestracja warstwy SUROWEJ produktu (P-5.1b).
+ * Slice ProductInfo — rejestracja warstwy SUROWEJ produktu (P-5.1b; pole nazwy — P-13.2a-core).
  *
  * @package Qutlet\Core
  */
@@ -20,6 +20,7 @@ namespace Qutlet\Core\ProductInfo;
  *
  * Pola (literały z `docs/kontrakt-danych.md` §9.1 — VERBATIM, case-sensitive):
  * - `_qutlet_allegro_offer`             — pełna oferta Allegro JSON verbatim (string).
+ * - `_qutlet_allegro_nazwa_raw`         — oryginalna nazwa Allegro, verbatim (string).
  * - `_qutlet_allegro_description_raw`   — opis prozą wyprowadzony z JSON-a (string/HTML).
  * - `_qutlet_allegro_specification_raw` — specyfikacja parsed, tablica {etykieta, wartosc}.
  *
@@ -39,6 +40,11 @@ final class RawLayerMeta {
 	 * `meta_key` pełnej oferty Allegro (JSON verbatim) — kontrakt §9.1 (VERBATIM).
 	 */
 	public const META_OFFER = '_qutlet_allegro_offer';
+
+	/**
+	 * `meta_key` oryginalnej nazwy Allegro (verbatim) — kontrakt §9.1 (VERBATIM).
+	 */
+	public const META_NAME_RAW = '_qutlet_allegro_nazwa_raw';
 
 	/**
 	 * `meta_key` opisu prozą wyprowadzonego z oferty — kontrakt §9.1 (VERBATIM).
@@ -68,7 +74,7 @@ final class RawLayerMeta {
 	}
 
 	/**
-	 * Rejestruje trzy pola warstwy surowej jako prywatne, nieedytowalne post meta.
+	 * Rejestruje cztery pola warstwy surowej jako prywatne, nieedytowalne post meta.
 	 *
 	 * @return void
 	 */
@@ -84,6 +90,18 @@ final class RawLayerMeta {
 				// R/O dla użytkownika: sync pisze przez update_post_meta(), które
 				// auth_callback pomija. Verbatim → bez sanitize (nie zniekształcamy JSON-a).
 				'auth_callback'     => '__return_false',
+			)
+		);
+
+		register_post_meta(
+			self::POST_TYPE,
+			self::META_NAME_RAW,
+			array(
+				'type'          => 'string',
+				'description'   => 'Oryginalna nazwa Allegro (verbatim). Warstwa surowa — nadpisywana przy sync.',
+				'single'        => true,
+				'show_in_rest'  => false,
+				'auth_callback' => '__return_false',
 			)
 		);
 
