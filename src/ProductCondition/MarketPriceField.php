@@ -20,6 +20,15 @@ use WC_Product;
  * hooku; `woocommerce_product_options_pricing` to najbliższy dostępny hook,
  * wciąż wewnątrz tego samego boksu `options_group pricing`).
  *
+ * UWAGA o widoczności (inaczej niż `ProductDiscountRateField`): boks
+ * `options_group pricing` ma klasy `show_if_simple show_if_external` (JS Woo
+ * chowa go dla `grouped`/`variable`) — pole jest więc widoczne tylko dla
+ * produktów prostych/zewnętrznych, NIE dla wszystkich typów jak
+ * `_qutlet_stawka_rabatu` (ten hook jest poza jakimkolwiek `show_if_*`).
+ * W praktyce bez znaczenia: `qutlet-allegro\OfferSync\ProductWriter` tworzy
+ * WYŁĄCZNIE `WC_Product_Simple` (potwierdzone ground-truth P-13.5 — cały
+ * katalog Local, 525/525 produktów, typ `simple`).
+ *
  * Przenosiny z ACF (P-13.5, REWIZJA P-1.2/P-9.2): meta_key ZOSTAJE publiczny
  * `cena_rynkowa_nowego` (D-13.5.2, bez podkreślnika, bez migracji danych) —
  * `ProductConditionFields` przestała rejestrować to pole jako ACF, ale wartości
