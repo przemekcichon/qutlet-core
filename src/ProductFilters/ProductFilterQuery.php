@@ -51,7 +51,11 @@ final class ProductFilterQuery {
 	/** Nazwa GET param = literał pola ACF klasy stanu (kontrakt §2, VERBATIM). */
 	public const CONDITION_PARAM = 'klasa_stanu';
 
-	/** ACF pole ceny rynkowej nowego (kontrakt §2, VERBATIM) — baza rabatu. */
+	/**
+	 * Meta_key ceny rynkowej nowego (kontrakt §2, VERBATIM) — baza rabatu.
+	 * Od P-13.5 NIE jest to już pole ACF — natywne Product Data, ten sam
+	 * meta_key ({@see \Qutlet\Core\ProductCondition\MarketPriceField}).
+	 */
 	public const MARKET_PRICE_META_KEY = 'cena_rynkowa_nowego';
 
 	/**

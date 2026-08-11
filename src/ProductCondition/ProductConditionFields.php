@@ -14,13 +14,17 @@ namespace Qutlet\Core\ProductCondition;
  *
  * Pola (literały z `docs/kontrakt-danych.md` §2 — VERBATIM, case-sensitive):
  * - `klasa_stanu`                 — select A/B/C/D, wymagane.
- * - `cena_rynkowa_nowego`         — number (PLN), opcjonalne.
  * - `zawartosc_zestawu_pozycje`   — repeater (sub-pola `zdjecie`/`etykieta`/
  *   `w_zestawie`), opcjonalne. Zastępuje pole WYSIWYG `zawartosc_zestawu`
  *   z P-1.2 (D-9.2.1) — ground-truth P-8.2c ujawnił, że WYSIWYG
  *   (`media_upload=0`, `toolbar=basic`) nie udźwignie ani zdjęć karuzeli, ani
  *   struktury pozycja+flaga wymaganej przez `.ship-grid` (`produkt.html:142-173`).
  *   Stare pole nigdy nie miało danych (produkt niewystawiony) — bez migracji.
+ *
+ * `cena_rynkowa_nowego` NIE jest już tu rejestrowane (P-13.5, REWIZJA
+ * P-1.2/P-9.2) — przeniesione do natywnej zakładki „Ogólne" Product Data,
+ * ten sam meta_key, ten sam mechanizm co `_qutlet_stawka_rabatu` ({@see
+ * \Qutlet\Core\ProductCondition\MarketPriceField}).
  *
  * Mechanizm: `acf_add_local_field_group()` w PHP (decyzja P-1.2). Kod = źródło
  * prawdy; pola są wersjonowane i nie zależą od zapisywalnego folderu acf-json.
@@ -81,18 +85,6 @@ final class ProductConditionFields {
 						'return_format' => 'value',
 					),
 					array(
-						'key'          => 'field_qutlet_cena_rynkowa_nowego',
-						'label'        => __( 'Cena rynkowa nowego (PLN)', 'qutlet-core' ),
-						'name'         => 'cena_rynkowa_nowego',
-						'type'         => 'number',
-						'instructions' => __( 'Odniesienie „nowy w sklepach / średnia rynkowa". Puste → motyw ukrywa linię „nowy" i rabat.', 'qutlet-core' ),
-						'required'     => 0,
-						'min'          => 0,
-						'step'         => 'any',
-						'append'       => 'zł',
-						'placeholder'  => '',
-					),
-					array(
 						'key'           => 'field_qutlet_zawartosc_zestawu_pozycje',
 						'label'         => __( 'Co w przesyłce', 'qutlet-core' ),
 						'name'          => 'zawartosc_zestawu_pozycje',
@@ -149,7 +141,7 @@ final class ProductConditionFields {
 				'label_placement'       => 'top',
 				'instruction_placement' => 'label',
 				'active'                => true,
-				'description'           => __( 'Pola stanu, ceny odniesienia i zawartości zestawu — rejestruje qutlet-core (P-1.2).', 'qutlet-core' ),
+				'description'           => __( 'Pola stanu i zawartości zestawu — rejestruje qutlet-core (P-1.2).', 'qutlet-core' ),
 				'show_in_rest'          => 0,
 			)
 		);
