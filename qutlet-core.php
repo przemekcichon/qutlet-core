@@ -66,6 +66,10 @@ function bootstrap(): void {
 	AllegroChannel\AllegroChannelFields::init();
 	ReadingTime\ReadingTimeMeta::init();
 
+	// ProductCondition (P-13.5): cena rynkowa nowego — natywna zakładka General
+	// Product Data (nie ACF), ten sam mechanizm co ProductDiscountRateField.
+	ProductCondition\MarketPriceField::init();
+
 	// ProductInfo (P-5.1b): warstwa surowa (prywatne meta z Allegro) + przerobiona
 	// (opis ACF). Specyfikacja przerobiona = natywne atrybuty WC (bez rejestracji).
 	ProductInfo\RawLayerMeta::init();
