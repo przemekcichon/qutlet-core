@@ -58,6 +58,14 @@ final class ClassDefinitionsTaxonomy {
 	private const GROUP_KEY = 'group_qutlet_klasa_stanu_definicja';
 
 	/**
+	 * Klucz pola `kod` (join key) — {@see self::validate_unique_kod()} dopasowuje
+	 * po tym kluczu, żeby duplikat NIE nadpisał po cichu istniejącej klasy w
+	 * {@see self::all()} (recenzja sesji P-12.1a — bez tej walidacji admin
+	 * dodający klasę przez D-12.G1 mógł niechcący „ukryć" wcześniejszą).
+	 */
+	private const FIELD_KEY_KOD = 'field_qutlet_klasa_kod';
+
+	/**
 	 * Wpina rejestrację taksonomii i grupy pól ACF na `init`/`acf/init`.
 	 *
 	 * @return void
@@ -65,6 +73,7 @@ final class ClassDefinitionsTaxonomy {
 	public static function init(): void {
 		add_action( 'init', array( self::class, 'register_taxonomy' ) );
 		add_action( 'acf/init', array( self::class, 'register_fields' ) );
+		add_filter( 'acf/validate_value/key=' . self::FIELD_KEY_KOD, array( self::class, 'validate_unique_kod' ), 10, 2 );
 	}
 
 	/**
@@ -117,7 +126,7 @@ final class ClassDefinitionsTaxonomy {
 				'title'                 => __( 'Qutlet — definicja klasy stanu', 'qutlet-core' ),
 				'fields'                => array(
 					array(
-						'key'          => 'field_qutlet_klasa_kod',
+						'key'          => self::FIELD_KEY_KOD,
 						'label'        => __( 'Kod (klucz techniczny)', 'qutlet-core' ),
 						'name'         => 'kod',
 						'type'         => 'text',
@@ -204,6 +213,45 @@ final class ClassDefinitionsTaxonomy {
 				'show_in_rest'          => 0,
 			)
 		);
+	}
+
+	/**
+	 * Wymusza unikalność `kod` między termami (recenzja P-12.1a) — bez tej
+	 * walidacji duplikat po cichu NADPISZE wcześniejszy wpis w {@see self::all()}
+	 * (indeksowanie po `kod`), robiąc jedną z definicji niewidoczną w `choices`
+	 * pola `klasa_stanu` bez żadnego ostrzeżenia. `tag_ID` to natywne, ukryte pole
+	 * formularza edycji termu WP (`wp-admin/edit-tags.php`) — obecne przy EDYCJI
+	 * istniejącego termu (wyłącza go z porównania), nieobecne przy DODAWANIU
+	 * nowego (nic do wyłączenia).
+	 *
+	 * @param bool|string $valid Wynik dotychczasowej walidacji (np. `required`).
+	 * @param mixed       $value Wartość pola `kod` przed zapisem.
+	 * @return bool|string
+	 */
+	public static function validate_unique_kod( $valid, $value ) {
+		if ( true !== $valid ) {
+			return $valid; // Wcześniejsza walidacja już odrzuciła wartość.
+		}
+
+		$kod = trim( (string) $value );
+
+		if ( '' === $kod ) {
+			return $valid;
+		}
+
+		$current_term_id = isset( $_POST['tag_ID'] ) ? (int) $_POST['tag_ID'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- tylko porównanie ID do komunikatu walidacji, sam zapis chroniony natywnym nonce'em edycji termu.
+		$existing         = self::all()[ $kod ] ?? null;
+
+		if ( null !== $existing && $existing['term_id'] !== $current_term_id ) {
+			return sprintf(
+				/* translators: 1: kod, 2: nazwa klasy, która już go używa. */
+				__( 'Kod „%1$s" jest już użyty przez klasę „%2$s" — musi być unikalny.', 'qutlet-core' ),
+				$kod,
+				$existing['nazwa']
+			);
+		}
+
+		return $valid;
 	}
 
 	/**

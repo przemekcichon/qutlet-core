@@ -71,10 +71,12 @@ final class ProductConditionFields {
 	private const FIELD_KEY_ALLEGRO_STAN_RAW = 'field_qutlet_allegro_stan_raw';
 
 	/**
-	 * Klucz pola `klasa_stanu` (P-12.1a) — `acf/load_field` dopasowuje po tym
-	 * kluczu, żeby dobudować `choices` z {@see ClassDefinitionsTaxonomy} bez
-	 * ingerowania w inne pola select w witrynie (filtr GLOBALNY, jak przy
-	 * {@see self::FIELD_KEY_ALLEGRO_STAN_RAW}).
+	 * Klucz pola `klasa_stanu` (P-12.1a) — dobudowuje `choices` z {@see
+	 * ClassDefinitionsTaxonomy} przez `acf/load_field/key=…` (NIE globalny hook
+	 * jak `acf/pre_render_field` przy {@see self::FIELD_KEY_ALLEGRO_STAN_RAW} —
+	 * WordPress dopisuje ten klucz do NAZWY hooka, więc filtr jest zawężony przez
+	 * sam mechanizm rejestracji, bez potrzeby ręcznego sprawdzenia klucza w ciele
+	 * callbacku).
 	 */
 	private const FIELD_KEY_KLASA_STANU = 'field_qutlet_klasa_stanu';
 
