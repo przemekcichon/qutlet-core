@@ -63,6 +63,11 @@ function bootstrap(): void {
 	// Slice'y modelu danych (pola ACF, CPT, glue do WooCommerce). Każdy slice
 	// sam wpina swoje hooki — bootstrap tylko go inicjalizuje.
 	ProductCondition\ProductConditionFields::init();
+
+	// ProductCondition (P-12.1a): byt „definicja klasy stanu" (taksonomia +
+	// term meta) — źródło `choices` pola `klasa_stanu` (D-1.2.1 REWIZJA,
+	// patrz docblocki ProductConditionFields/ClassDefinitionsTaxonomy).
+	ProductCondition\ClassDefinitionsTaxonomy::init();
 	AllegroChannel\AllegroChannelFields::init();
 	ReadingTime\ReadingTimeMeta::init();
 
@@ -113,6 +118,13 @@ function bootstrap(): void {
 	 */
 	if ( defined( 'WP_CLI' ) && \WP_CLI ) {
 		\WP_CLI::add_command( 'qutlet-core backfill-opis-to-content', ProductInfo\BackfillOpisToContentCommand::class );
+
+		/*
+		 * ProductCondition (P-12.1a): jednorazowe seedowanie taksonomii
+		 * `klasa_stanu_definicja` klasami A-D — patrz docblock komendy, czemu to
+		 * seed bytu opisowego, nie backfill danych produktu.
+		 */
+		\WP_CLI::add_command( 'qutlet-core seed-klasa-stanu', ProductCondition\SeedClassDefinitionsCommand::class );
 	}
 }
 
