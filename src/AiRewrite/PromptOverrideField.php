@@ -127,11 +127,15 @@ final class PromptOverrideField {
 	 * `ACF_Form_Post::add_meta_boxes()` — ustalone czytaniem
 	 * `advanced-custom-fields-pro/includes/forms/form-post.php`). Zdjęcie
 	 * metaboxa NIE wpływa na zapis: `ACF_Form_Post::save_post()` wisi na osobnym
-	 * hooku (`save_post`, wpiętym w konstruktorze, niezależnie od ekranu) i sam
-	 * odnajduje grupy pól właściwe dla zapisywanego posta przez
-	 * `acf_get_field_groups()` (dopasowanie po `location`, nie po tym, czy
-	 * metabox się kiedykolwiek wyrenderował) — pole nadal się zapisuje, mimo że
-	 * jego własny box nie istnieje. Render przenosi się do `qutlet-ai`
+	 * hooku (`save_post`, dodanym unconditionally w konstruktorze, niezależnie od
+	 * ekranu) i sam zapis (`acf_save_post()` → `acf_update_values()`,
+	 * `includes/acf-value-functions.php`) resolvuje KAŻDY wpis `$_POST['acf']`
+	 * PO KLUCZU POLA (`acf_get_field( $key )`) — bez odwołania do
+	 * `acf_get_field_groups()`/`location` w ogóle, więc a fortiori niezależnie od
+	 * tego, czy metabox danej grupy się kiedykolwiek wyrenderował. Nonce
+	 * (`acf_verify_nonce()`) weryfikuje pole wypisane unconditionally przez
+	 * `acf_form_data()` na `edit_form_after_title` — też niezależnie od tego
+	 * metaboxa. Render przenosi się do `qutlet-ai`
 	 * ({@see self::render_field()}, P-13.6a/D-13.G4).
 	 *
 	 * @param string $post_type Typ posta bieżącego ekranu edycji.
@@ -161,16 +165,32 @@ final class PromptOverrideField {
 	 * w `GenerationMetaBox` — `qutlet-ai` i tak hard-dependuje na `qutlet-core`
 	 * (D-G5), więc bezpośrednie wywołanie klasy nie jest nowym rodzajem sprzężenia.
 	 *
+	 * `function_exists()` — obrona w głąb: `qutlet-ai` NIE weryfikuje obecności
+	 * ACF Pro we własnym guardzie zależności (jego twarda zależność to core +
+	 * Woo, D-G5), więc w scenariuszu „ACF Pro wyłączone, core+ai+Woo aktywne"
+	 * `Qutlet\Ai\bootstrap()` przejdzie (core's własny guard no-opuje osobno) i
+	 * ta metoda wywołałaby się z niezdefiniowanymi funkcjami ACF — fatal na
+	 * KAŻDYM ekranie edycji produktu, nie tylko cichy brak pola.
+	 *
 	 * @param int $product_id ID produktu.
 	 * @return void
 	 */
 	public static function render_field( int $product_id ): void {
-		$fields = acf_get_fields( self::GROUP_KEY );
+		if ( ! function_exists( 'acf_get_fields' ) || ! function_exists( 'acf_render_fields' ) ) {
+			return;
+		}
+
+		$field_group = acf_get_field_group( self::GROUP_KEY );
+		$fields      = acf_get_fields( self::GROUP_KEY );
 
 		if ( array() === $fields ) {
 			return;
 		}
 
-		acf_render_fields( $fields, $product_id, 'div', 'label' );
+		$instruction_placement = is_array( $field_group ) && isset( $field_group['instruction_placement'] )
+			? (string) $field_group['instruction_placement']
+			: 'label';
+
+		acf_render_fields( $fields, $product_id, 'div', $instruction_placement );
 	}
 }
