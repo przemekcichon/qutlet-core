@@ -23,14 +23,16 @@ use function WP_CLI\Utils\get_flag_value;
  * ## Dlaczego to nie jest opcjonalne (uwaga operacyjna, patrz docblock
  * {@see ClassDefinitionsTaxonomy})
  * {@see ProductConditionFields} zmienia typ pola `klasa_stanu` z ACF `select`
- * na `taxonomy` (`load_terms` włączone) — od tej zmiany ACF czyta wybraną
- * klasę WYŁĄCZNIE z relacji, nie z postmeta. Produkt bez relacji (czyli
- * WSZYSTKIE już zaimportowane produkty przed pierwszym uruchomieniem tej
- * komendy) pokaże PUSTY dropdown na ekranie edycji — a zapis formularza (z
- * JAKIEGOKOLWIEK powodu, nie tylko zmiany klasy) nadpisze to pustą relacją,
- * kasując istniejącą klasyfikację. Komenda MUSI przebiec NATYCHMIAST po
- * wdrożeniu tej zmiany w każdym środowisku, PRZED jakimkolwiek zapisem ekranu
- * edycji produktu.
+ * na `taxonomy` (`load_terms`/`required` włączone) — od tej zmiany ACF czyta
+ * wybraną klasę WYŁĄCZNIE z relacji, nie z postmeta. Produkt bez relacji
+ * (czyli WSZYSTKIE już zaimportowane produkty przed pierwszym uruchomieniem
+ * tej komendy) pokaże PUSTY dropdown na ekranie edycji — zapis formularza
+ * (z JAKIEGOKOLWIEK powodu, nie tylko zmiany klasy) BLOKUJE się na walidacji
+ * ACF „wartość jest wymagana" (zmierzone runtime, `docs/plan.md` P-12.2a),
+ * baza zostaje NIENARUSZONA. Skutek to wymuszona reklasyfikacja i
+ * zablokowana edycja produktu, NIE utrata danych — ale i to jest powód, żeby
+ * komenda przebiegła NATYCHMIAST po wdrożeniu tej zmiany w każdym
+ * środowisku, PRZED jakimkolwiek zapisem ekranu edycji produktu.
  *
  * ## Nie jest to migracja per-produkt wartości `klasa_stanu`
  * Literał w postmeta NIE jest zmieniany ani kasowany przez tę komendę —

@@ -149,7 +149,8 @@ final class ProductFilterQuery {
 	}
 
 	/* ---------------------------------------------------------------------
-	 * Modyfikacje głównego zapytania: klasa stanu (meta_query) + sortowanie
+	 * Modyfikacje głównego zapytania: klasa stanu (tax_query, REWIZJA
+	 * P-12.2a — dawniej meta_query, patrz docblock klasy) + sortowanie
 	 * „Największy rabat" (posts_clauses) — jedyne dwa elementy bez natywnego
 	 * wsparcia Woo.
 	 * ------------------------------------------------------------------ */
@@ -298,7 +299,9 @@ final class ProductFilterQuery {
 	/**
 	 * `tax_query`/`meta_query` głównego zapytania archiwum — zawiera już
 	 * automatyczny tax_query kategorii/marki (natywny mechanizm WP_Query) i
-	 * nasz `meta_query` klasy stanu, jeśli aktywny.
+	 * NASZE własne wiersze marki/kategorii/klasy stanu (REWIZJA P-12.2a: klasa
+	 * stanu też jedzie przez `tax_query` od cutoveru, dawniej `meta_query` —
+	 * patrz docblock klasy).
 	 *
 	 * Runtime na Localu (2026-07-29, kategoria `telefony-akcesoria`, 148
 	 * produktów) ujawnił, że `$wp_query->query_vars['tax_query']` jest PUSTE
@@ -313,10 +316,13 @@ final class ProductFilterQuery {
 	 * obrębie bieżącej kategorii (zmierzone: marka „3mk" pokazywała 29 —
 	 * cały sklep — zamiast 25 w tej kategorii; granica ceny 3599 zł zamiast
 	 * 269,10 zł). Poprawka: czytamy rozwiązany tax_query z obiektu
-	 * `$main->tax_query->queries` (publiczna właściwość `WP_Tax_Query`), NIE
-	 * z `query_vars`. `meta_query` NIE ma tego problemu — nasz własny wiersz
-	 * (`apply_condition_filter()`) trafia tam przez `$q->set('meta_query', …)`,
-	 * czyli wprost do `query_vars['meta_query']`.
+	 * `$main->tax_query->queries` (publiczna właściwość `WP_Tax_Query`) —
+	 * NASZE wiersze (`qutlet_brand_filter`/`qutlet_category_filter`/
+	 * `qutlet_condition_filter`) przetrwają tam, bo `WP_Tax_Query::__construct()`
+	 * scala je do `$this->queries` przez `array_merge()` z domyślnymi
+	 * kluczami, nie odrzuca nierozpoznanych flag. `meta_query` (od P-12.2a BEZ
+	 * WŁASNYCH wierszy tej klasy) czytamy z `query_vars` — tam trafiłby
+	 * ewentualny `meta_query` dołożony przez kogoś innego (Woo, inny hook).
 	 *
 	 * @return array{tax_query: array<int, mixed>, meta_query: array<int, mixed>}
 	 */

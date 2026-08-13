@@ -308,17 +308,24 @@ final class ProductConditionFields {
 	 * `false`, więc `$value` przechodzi bez zmian (konsumenci już obsługują
 	 * pusty/falsy kod, patrz `qutlet-theme\Cart::cart_item_data()`).
 	 *
+	 * Relacja do termu BEZ wypełnionego `kod` (recenzja P-12.2a, rundy 2) →
+	 * zwracamy `''`, NIE surowy `term_id` — degradacja identyczna jak
+	 * {@see ClassDefinitionsTaxonomy::all()}/{@see ClassDefinitionsTaxonomy::for_product()}
+	 * (obie pomijają/zwracają `null` dla termu bez `kod`). Bez tej gałęzi
+	 * konsument (np. `Cart::cart_item_data()`) wypuściłby surowy `term_id` na
+	 * powierzchnię klienta („Klasa 166" w koszyku) — ten stan jest
+	 * mało prawdopodobny (formularz definicji klasy ma `kod` jako
+	 * `required=1`), ale osiągalny przez term utworzony poza tym formularzem.
+	 *
 	 * @param mixed $value Wartość PO wewnętrznym formatowaniu ACF (`term_id`, int, albo `false`).
-	 * @return mixed Kod klasy (string, np. `C`) — albo `$value` bez zmian, gdy nie ma czego zmapować.
+	 * @return mixed Kod klasy (string, np. `C`), `''` (relacja do termu bez `kod`) — albo `$value` bez zmian, gdy nie ma żadnej relacji.
 	 */
 	public static function format_condition_as_kod( $value ) {
 		if ( ! is_numeric( $value ) ) {
 			return $value;
 		}
 
-		$kod = (string) get_term_meta( (int) $value, 'kod', true );
-
-		return '' !== $kod ? $kod : $value;
+		return (string) get_term_meta( (int) $value, 'kod', true );
 	}
 
 	/**

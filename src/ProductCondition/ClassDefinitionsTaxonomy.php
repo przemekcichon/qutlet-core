@@ -32,16 +32,28 @@ namespace Qutlet\Core\ProductCondition;
  * `docs/plan.md` P-12.2a):** `qutlet-allegro\OfferSync\ProductWriter` (poza
  * zakresem tej sesji) dziś woła `update_field(ACF_KEY_CONDITION, $kod, …)`
  * gołym literałem (`'A'`…) — po zmianie typu pola na `taxonomy` ACF potrzebuje
- * `term_id`, nie kodu. Auto-klasyfikacja NOWYCH produktów przy imporcie
- * Allegro przestaje poprawnie ustawiać klasę od merge'u tej sesji do merge'u
- * P-12.2b (osobna, przyszła sesja) — edycja RĘCZNA w adminie (dropdown) działa
- * poprawnie od razu, bo idzie przez natywny formularz ACF. {@see
- * BackfillKlasaStanuRelationCommand} MUSI przebiec NATYCHMIAST po wdrożeniu
- * tej zmiany w każdym środowisku (Local teraz, produkcja później) — PRZED
- * jakimkolwiek zapisem ekranu edycji produktu, bo do czasu backfillu dropdown
- * klasy renderuje się jako PUSTY (brak jeszcze relacji), a zapis formularza
- * (nawet z innego powodu, np. zmiana ceny) nadpisałby to pustą relacją,
- * kasując istniejącą klasyfikację.
+ * `term_id`, nie kodu; `intval($kod)` daje `0`, więc `wp_set_object_terms()`
+ * pomija tę wartość i relacja NIE POWSTAJE (postmeta `klasa_stanu` i tak
+ * dostaje literał — zapis metadanych ACF jest bezwarunkowy). Taki NOWY
+ * produkt renderuje się na żywej stronie BEZ chipa/wiersza tabeli/tekstu
+ * gwarancji-reklamacji, nie wchodzi do filtra/facetów klasy stanu, i NIE da
+ * się go zapisać z wp-admin (pole wymagane, puste) do czasu ręcznej
+ * klasyfikacji — objawy identyczne jak przy produkcie bez backfillu. Skutek
+ * dotyczy KAŻDEGO produktu zaimportowanego od merge'u tej sesji do merge'u
+ * P-12.2b (osobna, przyszła sesja) — trzeba więc uruchamiać {@see
+ * BackfillKlasaStanuRelationCommand} PO KAŻDYM `import-offers` w tym oknie,
+ * nie tylko raz na starcie. Edycja RĘCZNA w adminie (dropdown) działa
+ * poprawnie od razu, bo idzie przez natywny formularz ACF, nie przez
+ * `update_field()` z gołym stringiem.
+ *
+ * {@see BackfillKlasaStanuRelationCommand} MUSI przebiec NATYCHMIAST po
+ * wdrożeniu tej zmiany w każdym środowisku (Local teraz, produkcja później)
+ * — PRZED jakimkolwiek zapisem ekranu edycji produktu, bo do czasu backfillu
+ * dropdown klasy renderuje się jako PUSTY (brak jeszcze relacji), a zapis
+ * formularza (nawet z innego powodu, np. zmiana ceny) BLOKUJE się na
+ * walidacji ACF „wartość jest wymagana" (`required=1`, zmierzone runtime —
+ * baza zostaje NIENARUSZONA, skutek to wymuszona reklasyfikacja i
+ * zablokowana edycja produktu, NIE utrata danych).
  *
  * `kod` (term meta) to techniczny klucz łączący klasę z historycznym literałem
  * (`A`-`D`, `Nowe`) — NIE slug WP (który `sanitize_title()` bezwarunkowo
