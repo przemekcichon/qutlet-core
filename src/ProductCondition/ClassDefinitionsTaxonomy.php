@@ -82,11 +82,12 @@ final class ClassDefinitionsTaxonomy {
 	}
 
 	/**
-	 * Rejestruje taksonomię — DEFINICJE, nie relacja z produktem (patrz docblock
-	 * klasy). Dołączona do `product` WYŁĄCZNIE, żeby admin dostał ekran
-	 * „Produkty → Klasy stanu" (Tags-like, za darmo); `meta_box_cb` wyłączony,
-	 * żeby na ekranie edycji produktu nie pokazał się mylący panel wyboru termu
-	 * (rzeczywisty wybór klasy zostaje na polu ACF `klasa_stanu`).
+	 * Rejestruje taksonomię. Dołączona do `product` m.in. żeby admin dostał
+	 * ekran „Produkty → Klasy stanu" (Tags-like, za darmo); `meta_box_cb`
+	 * wyłączony, żeby na ekranie edycji produktu nie pokazał się DRUGI,
+	 * konkurencyjny panel wyboru termu — wybór klasy zostaje WYŁĄCZNIE na
+	 * polu ACF `klasa_stanu` (od P-12.2a: typ `taxonomy`, ten sam mechanizm
+	 * relacji, patrz docblock klasy), nie na natywnym metaboxie taksonomii.
 	 *
 	 * @return void
 	 */
@@ -135,7 +136,7 @@ final class ClassDefinitionsTaxonomy {
 						'label'        => __( 'Kod (klucz techniczny)', 'qutlet-core' ),
 						'name'         => 'kod',
 						'type'         => 'text',
-						'instructions' => __( 'Techniczny identyfikator zapisywany na produkcie (pole „Klasa stanu"). Dla dzisiejszych klas: A/B/C/D — case-sensitive, MUSI być unikalny. Zmiana kodu istniejącej klasy odłącza od niej już zsynchronizowane produkty.', 'qutlet-core' ),
+						'instructions' => __( 'Techniczny identyfikator historycznie zapisywany na produkcie (pole „Klasa stanu", literał w polu — dziś relacja z tym termem, patrz mechanizm P-12.2a). Dla dzisiejszych klas: A/B/C/D — case-sensitive, MUSI być unikalny. Zmiana kodu istniejącej klasy odłącza od niej już zsynchronizowane produkty (join po tym kodzie), np. przy kolejnym backfillu.', 'qutlet-core' ),
 						'required'     => 1,
 					),
 					array(
@@ -223,8 +224,8 @@ final class ClassDefinitionsTaxonomy {
 	/**
 	 * Wymusza unikalność `kod` między termami (recenzja P-12.1a) — bez tej
 	 * walidacji duplikat po cichu NADPISZE wcześniejszy wpis w {@see self::all()}
-	 * (indeksowanie po `kod`), robiąc jedną z definicji niewidoczną w `choices`
-	 * pola `klasa_stanu` bez żadnego ostrzeżenia. `tag_ID` to natywne, ukryte pole
+	 * (indeksowanie po `kod`), robiąc jedną z definicji niewidoczną (m.in. w
+	 * {@see self::for_product()} i backfillu) bez żadnego ostrzeżenia. `tag_ID` to natywne, ukryte pole
 	 * formularza edycji termu WP (`wp-admin/edit-tags.php`) — obecne przy EDYCJI
 	 * istniejącego termu (wyłącza go z porównania), nieobecne przy DODAWANIU
 	 * nowego (nic do wyłączenia).

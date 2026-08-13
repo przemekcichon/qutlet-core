@@ -101,6 +101,7 @@ final class ProductConditionFields {
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
 		add_filter( 'acf/pre_render_field', array( self::class, 'inject_condition_raw_message' ), 10, 2 );
+		add_filter( 'acf/format_value/key=' . self::FIELD_KEY_KLASA_STANU, array( self::class, 'format_condition_as_kod' ), 20 );
 		add_action( 'admin_notices', array( self::class, 'render_missing_class_definitions_notice' ) );
 	}
 
@@ -288,6 +289,36 @@ final class ProductConditionFields {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Kompatybilność wsteczna dla `get_field('klasa_stanu')` (P-12.2a, D-12.2.1
+	 * cutover): pole zmienia typ na `taxonomy` (`return_format=id`,
+	 * `field_type=select`), więc bez tego filtra ACF zwróciłby `term_id`
+	 * (int, np. `166`) — `qutlet-allegro`/`qutlet-theme` (poza zakresem tej
+	 * sesji, osobne punkty P-12.2b/P-12.2c) wciąż oczekują dawnego kodu
+	 * (`A`-`D`, `Nowe`). Filtr jest zawężony przez sam mechanizm rejestracji
+	 * (`acf/format_value/key=…`, zmienna hooka), fires PO wewnętrznym
+	 * `format_value()` typu `taxonomy` ACF (ta sama kolejność wariantów co
+	 * `acf/update_value` — `type` przed `key`), więc dostaje już finalny
+	 * `term_id`, nie surową wartość z bazy.
+	 *
+	 * Brak relacji → ACF zwraca `false` (`empty($value)` w jego
+	 * `format_value()`) — nic do zmapowania, `is_numeric(false)` jest
+	 * `false`, więc `$value` przechodzi bez zmian (konsumenci już obsługują
+	 * pusty/falsy kod, patrz `qutlet-theme\Cart::cart_item_data()`).
+	 *
+	 * @param mixed $value Wartość PO wewnętrznym formatowaniu ACF (`term_id`, int, albo `false`).
+	 * @return mixed Kod klasy (string, np. `C`) — albo `$value` bez zmian, gdy nie ma czego zmapować.
+	 */
+	public static function format_condition_as_kod( $value ) {
+		if ( ! is_numeric( $value ) ) {
+			return $value;
+		}
+
+		$kod = (string) get_term_meta( (int) $value, 'kod', true );
+
+		return '' !== $kod ? $kod : $value;
 	}
 
 	/**

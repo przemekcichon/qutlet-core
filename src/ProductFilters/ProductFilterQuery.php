@@ -27,10 +27,26 @@
  *   `wp-includes/class-wp-query.php::parse_tax_query()`;
  * - `min_price`/`max_price` obsługuje bezwarunkowo `WC_Query::price_filter_post_clauses()`
  *   (hook na `posts_clauses` głównego zapytania, `class-wc-query.php`).
- * Klasa stanu (pole ACF, brak odpowiednika natywnego) i sortowanie
- * „Największy rabat" (wartość LICZONA — kontrakt §6, nie pole) wymagają
- * własnego hooka — dokładnie tym samym wzorcem, jakim samo Woo dokłada
- * sortowanie po cenie/popularności/ocenie (`WC_Query::order_by_*_post_clauses()`).
+ * Klasa stanu i sortowanie „Największy rabat" (wartość LICZONA — kontrakt §6,
+ * nie pole) wymagają własnego hooka — dokładnie tym samym wzorcem, jakim samo
+ * Woo dokłada sortowanie po cenie/popularności/ocenie
+ * (`WC_Query::order_by_*_post_clauses()`). Klasa stanu DODATKOWO nie może użyć
+ * natywnego mechanizmu `query_var` swojej taksonomii (`klasa_stanu_definicja`,
+ * `public=false` — {@see \Qutlet\Core\ProductCondition\ClassDefinitionsTaxonomy})
+ * z tego samego powodu co marka/kategoria (`BRAND_PARAM`/`CATEGORY_PARAM`
+ * niżej) — własny hook, własny GET param.
+ *
+ * **REWIZJA P-12.2a (cutover, sesja 2026-08-13):** filtr i liczniki klasy
+ * stanu czytały dawniej WYŁĄCZNIE literał w postmeta `klasa_stanu`
+ * (`meta_query`/`GROUP BY meta_value`) — ten literał przestał być źródłem
+ * prawdy z chwilą cutoveru (pole ACF zmienia typ na `taxonomy`, patrz
+ * `docs/plan.md` P-12.2a). `apply_condition_filter()`/`condition_facets()`
+ * przechodzą na `tax_query`/JOIN po realnej relacji z tą samą taksonomią —
+ * ten sam wzorzec, którym `apply_brand_filter()`/`brand_facets()` już
+ * operują na `product_brand`. Kod GET (`A`-`D`) zostaje BEZ ZMIAN jako
+ * publiczny kontrakt URL (bookmarkowane/dzielone linki filtra) — rozwiązywany
+ * na `term_id` przez {@see \Qutlet\Core\ProductCondition\ClassDefinitionsTaxonomy::get()}
+ * tylko wewnętrznie, przed budową `tax_query`.
  *
  * @package Qutlet\Core
  */
@@ -39,16 +55,23 @@ declare( strict_types=1 );
 
 namespace Qutlet\Core\ProductFilters;
 
+use Qutlet\Core\ProductCondition\ClassDefinitionsTaxonomy;
+
 /**
  * Filtry (marka/klasa stanu/cena) + sortowanie — modyfikacja zapytania i
  * dane facetów dla archiwum produktu.
  */
 final class ProductFilterQuery {
 
-	/** Literały klasy stanu (kontrakt §2, pole ACF `klasa_stanu` — A/B/C/D). */
+	/**
+	 * Kody klasy stanu w publicznym kontrakcie URL (`?klasa_stanu[]=A`) — NIE
+	 * zmienione przez cutover P-12.2a (patrz docblock klasy). Rozwiązywane na
+	 * `term_id` przez {@see ClassDefinitionsTaxonomy::get()} przy budowie
+	 * `tax_query`/liczników — NIE są już bezpośrednio wartością postmeta.
+	 */
 	public const CONDITION_CODES = array( 'A', 'B', 'C', 'D' );
 
-	/** Nazwa GET param = literał pola ACF klasy stanu (kontrakt §2, VERBATIM). */
+	/** Nazwa GET param filtra klasy stanu (kontrakt §2, kod VERBATIM — publiczny kontrakt URL, patrz `CONDITION_CODES`). */
 	public const CONDITION_PARAM = 'klasa_stanu';
 
 	/**
@@ -148,10 +171,15 @@ final class ProductFilterQuery {
 	}
 
 	/**
-	 * Dokłada `meta_query` dla klasy stanu do głównego zapytania archiwum,
-	 * gdy GET niesie choć jeden zaznaczony kod. Wiersz oznaczony
+	 * Dokłada `tax_query` dla klasy stanu do głównego zapytania archiwum, gdy
+	 * GET niesie choć jeden zaznaczony kod — REWIZJA P-12.2a (dawniej
+	 * `meta_query` na literale postmeta, patrz docblock klasy). Każdy kod
+	 * rozwiązywany na `term_id` przez {@see ClassDefinitionsTaxonomy::get()};
+	 * kod bez definicji (np. nieznany/nie wyseedowany jeszcze term) jest
+	 * pomijany — degradacja bezpieczna, nie fatal. Wiersz oznaczony
 	 * `qutlet_condition_filter`, żeby liczniki facetu klasy stanu mogły go
-	 * wykluczyć przy liczeniu WŁASNYCH liczników (patrz `condition_facets()`).
+	 * wykluczyć przy liczeniu WŁASNYCH liczników (patrz `condition_facets()`)
+	 * — ten sam wzorzec co `apply_brand_filter()`/`qutlet_brand_filter`.
 	 *
 	 * @param \WP_Query $q Główne zapytanie archiwum (hook `woocommerce_product_query`).
 	 * @return void
@@ -163,14 +191,28 @@ final class ProductFilterQuery {
 			return;
 		}
 
-		$meta_query   = (array) $q->get( 'meta_query' );
-		$meta_query[] = array(
-			'key'                     => self::CONDITION_PARAM,
-			'value'                   => $codes,
-			'compare'                 => 'IN',
+		$term_ids = array();
+
+		foreach ( $codes as $code ) {
+			$definicja = ClassDefinitionsTaxonomy::get( $code );
+
+			if ( null !== $definicja ) {
+				$term_ids[] = $definicja['term_id'];
+			}
+		}
+
+		if ( ! $term_ids ) {
+			return;
+		}
+
+		$tax_query   = (array) $q->get( 'tax_query' );
+		$tax_query[] = array(
+			'taxonomy'                => ClassDefinitionsTaxonomy::TAXONOMY,
+			'field'                   => 'term_id',
+			'terms'                   => $term_ids,
 			'qutlet_condition_filter' => true,
 		);
-		$q->set( 'meta_query', $meta_query );
+		$q->set( 'tax_query', $tax_query );
 	}
 
 	/**
@@ -651,45 +693,54 @@ final class ProductFilterQuery {
 	 * kontekście archiwum, WYKLUCZAJĄC własny filtr klasy stanu (patrz
 	 * `apply_condition_filter()` — wiersz oznaczony `qutlet_condition_filter`).
 	 *
+	 * **REWIZJA P-12.2a:** liczniki JOIN-ują realną relację z
+	 * {@see ClassDefinitionsTaxonomy::TAXONOMY} (ten sam wzorzec co
+	 * `brand_facets()`/`category_facets()`), NIE `GROUP BY` na literale
+	 * postmeta (dawny mechanizm, martwy od cutoveru — patrz docblock klasy).
+	 * Iteracja zostaje po `self::CONDITION_CODES` (NIE po wszystkich
+	 * zdefiniowanych klasach) — kontrakt facetu jest dokładnie taki, jak
+	 * przed cutoverem, tylko ŹRÓDŁO liczników się zmienia.
+	 *
 	 * @return array<int, array{code: string, count: int, checked: bool}>
 	 */
 	public static function condition_facets(): array {
 		global $wpdb;
 
-		$parts = self::main_query_parts();
-		// BEZ array_values() — patrz komentarz w brand_facets() (ta sama
-		// zasada dotyczy `relation` w meta_query).
-		$meta_query = array_filter(
-			$parts['meta_query'],
+		$parts     = self::main_query_parts();
+		$tax_query = array_filter(
+			$parts['tax_query'],
 			static function ( $row ) {
 				return ! ( is_array( $row ) && ! empty( $row['qutlet_condition_filter'] ) );
 			}
 		);
-		$sql = self::filtered_sql( $parts['tax_query'], $meta_query );
+		$sql = self::filtered_sql( $tax_query, $parts['meta_query'] );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- liczniki facetu do renderu szuflady, liczone z tax/meta query WP_Query.
 		$rows = $wpdb->get_results(
-			"SELECT qutlet_condition.meta_value AS code, COUNT(DISTINCT {$wpdb->posts}.ID) AS product_count
+			"SELECT tt.term_id AS term_id, COUNT(DISTINCT {$wpdb->posts}.ID) AS product_count
 			FROM {$wpdb->posts}
-			INNER JOIN {$wpdb->postmeta} qutlet_condition ON {$wpdb->posts}.ID = qutlet_condition.post_id AND qutlet_condition.meta_key = '" . esc_sql( self::CONDITION_PARAM ) . "'
+			INNER JOIN {$wpdb->term_relationships} qutlet_condition_tr ON {$wpdb->posts}.ID = qutlet_condition_tr.object_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON qutlet_condition_tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = '" . esc_sql( ClassDefinitionsTaxonomy::TAXONOMY ) . "'
 			{$sql['join']}
 			WHERE {$wpdb->posts}.post_type = 'product' AND {$wpdb->posts}.post_status = 'publish'
 			{$sql['where']}
-			GROUP BY qutlet_condition.meta_value"
+			GROUP BY tt.term_id"
 		);
 
-		$counts = array();
+		$counts_by_term_id = array();
 
 		foreach ( (array) $rows as $row ) {
-			$counts[ strtoupper( (string) $row->code ) ] = (int) $row->product_count;
+			$counts_by_term_id[ (int) $row->term_id ] = (int) $row->product_count;
 		}
 
 		$selected = self::selected_conditions();
 		$facets   = array();
 
 		foreach ( self::CONDITION_CODES as $code ) {
-			$count   = $counts[ $code ] ?? 0;
-			$checked = in_array( $code, $selected, true );
+			$definicja = ClassDefinitionsTaxonomy::get( $code );
+			$term_id   = $definicja['term_id'] ?? null;
+			$count     = null !== $term_id ? ( $counts_by_term_id[ $term_id ] ?? 0 ) : 0;
+			$checked   = in_array( $code, $selected, true );
 
 			if ( 0 === $count && ! $checked ) {
 				continue;

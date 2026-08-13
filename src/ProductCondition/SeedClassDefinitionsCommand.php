@@ -30,13 +30,13 @@ use function WP_CLI\Utils\get_flag_value;
  *
  * ## Nie jest to backfill danych produktu
  * Inaczej niż {@see \Qutlet\Core\ProductInfo\BackfillOpisToContentCommand}: nic
- * na PRODUKTACH się nie zmienia — pole `klasa_stanu` zostaje tym samym literałem
- * (`A`-`D`) w postmeta, zapisywanym/czytanym przez `qutlet-allegro`/`qutlet-theme`
- * bez żadnej zmiany (decyzja o zachowaniu kontraktu wstecz, `docs/plan.md`
- * P-12.1a). „Migracja" (D-12.1a.2) to seedowanie NOWEGO bytu opisowego, z
- * którego `choices` pola `klasa_stanu` są teraz budowane dynamicznie
- * ({@see ProductConditionFields::inject_dynamic_choices()}) — zamiast
- * hardkodowanej tablicy w PHP.
+ * na PRODUKTACH się nie zmienia — ta komenda TYLKO tworzy wiersze definicji w
+ * taksonomii {@see ClassDefinitionsTaxonomy}, zero zapisu na produktach.
+ * „Migracja" (D-12.1a.2) to seedowanie NOWEGO bytu opisowego (dawniej
+ * hardkodowana tablica `choices` w PHP — REWIZJA P-12.1a). Ustawienie realnej
+ * relacji między już zaimportowanymi produktami a tymi definicjami to zadanie
+ * {@see BackfillKlasaStanuRelationCommand} (P-12.2a, osobna komenda, osobny
+ * cel — patrz jej docblock).
  *
  * ## Idempotencja
  * Termy dopasowywane po term meta `kod` (join key, NIE slug WP — patrz
