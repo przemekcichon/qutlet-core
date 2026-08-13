@@ -16,34 +16,39 @@ namespace Qutlet\Core\ProductCondition;
  * gwarancji i okres reklamacji (D-12.G3 — dwa osobne pola). Dodanie nowej klasy
  * (włącznie z „Nowe", D-12.G1) = dodanie termu w adminie, zero kodu.
  *
- * **REWIZJA D-1.2.1** (`docs/kontrakt-danych.md` §2 — świadomie odrzuciła
- * taksonomię na rzecz ACF select; decyzja użytkownika, sesja 2026-08-12,
- * `docs/plan.md` P-12.1a): taksonomia wraca, ale jako byt OPISOWY (definicje),
- * NIE jako mechanizm przypisania klasy do produktu — produkt NIE dostaje relacji
- * `wp_set_object_terms()` z tą taksonomią. Powód: `qutlet-allegro`
- * ({@see \Qutlet\Allegro\OfferSync\ProductWriter}) i `qutlet-theme`
- * (`ProductPage::acf_field('klasa_stanu', …)`, kilka miejsc) czytają/piszą
- * `klasa_stanu` jako PROSTY LITERAŁ w postmeta — obie ścieżki są POZA zakresem
- * tej sesji (P-12.1b/P-12.1c, osobne branche/PR-y). Zerwanie tego kontraktu
- * teraz zepsułoby sync i render na żywej stronie do czasu ich wdrożenia
- * (decyzja użytkownika: zachować kontrakt wstecz). Dlatego {@see
- * ProductConditionFields} NADAL rejestruje `klasa_stanu` jako ACF `select`,
- * zapisujący ten sam literał co dziś (`A`-`D`) — zmienia się WYŁĄCZNIE SKĄD
- * pochodzą `choices` (dawniej hardkodowana tablica, dziś ta taksonomia, przez
- * {@see ProductConditionFields::inject_dynamic_choices()}).
+ * **REWIZJA D-1.2.1 → CUTOVER P-12.2a** (`docs/kontrakt-danych.md` §2/§2.2,
+ * decyzja użytkownika, sesja 2026-08-13, `docs/plan.md` P-12.2, D-12.2.1):
+ * produkt DOSTAJE realną relację `wp_set_object_terms()` z tą taksonomią —
+ * poprzednia decyzja (P-12.1a) trzymała ją WYŁĄCZNIE jako byt opisowy (goły
+ * literał `klasa_stanu` w postmeta był jedynym „przypisaniem"), co dawało
+ * ZAWSZE 0 w liczniku „produktów" na ekranie „Produkty → Klasy stanu" —
+ * zgłoszone jako confusing. Mechanizm: {@see ProductConditionFields} zmienia
+ * TYP pola `klasa_stanu` z ACF `select` na ACF `taxonomy` (`save_terms`/
+ * `load_terms` włączone) — ACF sam woła `wp_set_object_terms()` przy zapisie i
+ * czyta z relacji, nie z postmeta. {@see self::for_product()} daje konsumentom
+ * (P-12.2b/P-12.2c) czysty odczyt klasy PRODUKTU przez `get_the_terms()`.
  *
- * „Migracja danych" (D-12.1a.2) w tym modelu = jednorazowe SEEDOWANIE tej
- * taksonomii wierszami A-D ({@see SeedClassDefinitionsCommand}), nie migracja
- * per-produkt — istniejące produkty nie zmieniają ani formatu, ani wartości
- * swojego pola `klasa_stanu`.
+ * **Ryzyko operacyjne przejścia (D-12.2.1, „Uwaga operacyjna" w
+ * `docs/plan.md` P-12.2a):** `qutlet-allegro\OfferSync\ProductWriter` (poza
+ * zakresem tej sesji) dziś woła `update_field(ACF_KEY_CONDITION, $kod, …)`
+ * gołym literałem (`'A'`…) — po zmianie typu pola na `taxonomy` ACF potrzebuje
+ * `term_id`, nie kodu. Auto-klasyfikacja NOWYCH produktów przy imporcie
+ * Allegro przestaje poprawnie ustawiać klasę od merge'u tej sesji do merge'u
+ * P-12.2b (osobna, przyszła sesja) — edycja RĘCZNA w adminie (dropdown) działa
+ * poprawnie od razu, bo idzie przez natywny formularz ACF. {@see
+ * BackfillKlasaStanuRelationCommand} MUSI przebiec NATYCHMIAST po wdrożeniu
+ * tej zmiany w każdym środowisku (Local teraz, produkcja później) — PRZED
+ * jakimkolwiek zapisem ekranu edycji produktu, bo do czasu backfillu dropdown
+ * klasy renderuje się jako PUSTY (brak jeszcze relacji), a zapis formularza
+ * (nawet z innego powodu, np. zmiana ceny) nadpisałby to pustą relacją,
+ * kasując istniejącą klasyfikację.
  *
- * `kod` (term meta) to techniczny klucz łączący literał zapisany na produkcie
- * (`A`-`D`, zapisywany przez `qutlet-allegro`) z wierszem tej taksonomii —
- * NIE slug WP (który `sanitize_title()` bezwarunkowo obniża do lowercase),
- * więc nie nadaje się na klucz wymagający wielkiej litery. Termu `name` niesie
- * pełną, opisową nazwę klasy (np. „Jak nowy") — administrator zarządza klasami
- * pod tą nazwą, literał `kod` jest technicznym szczegółem niewidocznym w
- * typowym flow edycyjnym (Produkty → Klasy stanu).
+ * `kod` (term meta) to techniczny klucz łączący klasę z historycznym literałem
+ * (`A`-`D`, `Nowe`) — NIE slug WP (który `sanitize_title()` bezwarunkowo
+ * obniża do lowercase), więc nie nadaje się na klucz wymagający wielkiej
+ * litery. Termu `name` niesie pełną, opisową nazwę klasy (np. „Jak nowy") —
+ * administrator zarządza klasami pod tą nazwą, literał `kod` jest technicznym
+ * szczegółem niewidocznym w typowym flow edycyjnym (Produkty → Klasy stanu).
  */
 final class ClassDefinitionsTaxonomy {
 
@@ -313,10 +318,55 @@ final class ClassDefinitionsTaxonomy {
 	/**
 	 * Jedna definicja po `kod` (join key) — `null`, gdy nieznana.
 	 *
-	 * @param string $kod Literał zapisany na produkcie (pole `klasa_stanu`).
+	 * @param string $kod Techniczny kod klasy (`A`-`D`, `Nowe`) — term meta `kod`.
 	 * @return array{term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int}|null
 	 */
 	public static function get( string $kod ): ?array {
 		return self::all()[ $kod ] ?? null;
+	}
+
+	/**
+	 * Definicja klasy PRZYPISANEJ do produktu — czyta przez realną relację
+	 * (`get_the_terms()`, P-12.2a, D-12.2.1), NIE przez zewnętrzny literał.
+	 * `null`, gdy produkt nie ma jeszcze relacji (świeży produkt przed
+	 * klasyfikacją, LUB produkt zaimportowany PRZED backfillem tej sesji —
+	 * {@see BackfillKlasaStanuRelationCommand}) albo relacja wskazuje na term
+	 * bez wypełnionego `kod` (niekompletna definicja).
+	 *
+	 * Pole `klasa_stanu` (ACF `taxonomy`, single-value) niesie NAJWYŻEJ jeden
+	 * term na produkt — bierzemy pierwszy z {@see get_the_terms()}.
+	 *
+	 * **D-12.2.4 (semantyka „puste" po cutoverze, `docs/plan.md` P-12.2):**
+	 * „puste" dla konsumentów zapisu (P-12.2b) = `null` z tej metody, NIE pusty
+	 * string postmeta — zachowuje identyczny skutek co dawny
+	 * `'' === get_post_meta($id, 'klasa_stanu', true)` (D-6.1.4: ręczna ocena
+	 * sprzedawcy nigdy nadpisywana kolejnym importem), o ile backfill
+	 * przebiegł PRZED cutoverem zapisu (patrz docblock klasy — ryzyko
+	 * operacyjne).
+	 *
+	 * @param int $product_id ID produktu.
+	 * @return array{kod: string, term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int}|null
+	 */
+	public static function for_product( int $product_id ): ?array {
+		$terms = get_the_terms( $product_id, self::TAXONOMY );
+
+		if ( ! is_array( $terms ) || array() === $terms ) {
+			return null;
+		}
+
+		$term = reset( $terms );
+		$kod  = (string) get_term_meta( $term->term_id, 'kod', true );
+
+		if ( '' === $kod ) {
+			return null;
+		}
+
+		$definicja = self::get( $kod );
+
+		if ( null === $definicja ) {
+			return null;
+		}
+
+		return array( 'kod' => $kod ) + $definicja;
 	}
 }

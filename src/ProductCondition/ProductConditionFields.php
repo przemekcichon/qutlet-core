@@ -25,16 +25,17 @@ use WP_Screen;
  *   P-13.7a) — core NIE importuje klas z `qutlet-allegro` (granica repo,
  *   `CLAUDE.md` §Struktura), więc ta mała ekstrakcja jest zduplikowana
  *   intencjonalnie; jeśli mapping „Stan" w allegro się zmieni, zsynchronizuj tu.
- * - `klasa_stanu`                 — select, wymagane. `choices` NIE są już
- *   hardkodowane tu (REWIZJA P-12.1a/D-1.2.1) — budowane dynamicznie na
- *   `acf/load_field` z {@see ClassDefinitionsTaxonomy}, rozszerzalnego bytu
- *   (taksonomia `klasa_stanu_definicja` + term meta), żeby dodanie nowej klasy
- *   (D-12.G1) nie wymagało zmiany kodu. Sam mechanizm zapisu (ACF select →
- *   plain postmeta, wartość = literał typu `A`/`B`/`C`/`D`) jest BEZ ZMIAN —
- *   `qutlet-allegro`/`qutlet-theme` (poza zakresem tej sesji) czytają/piszą
- *   ten literał i nie wymagają żadnej modyfikacji (patrz docblock
- *   {@see ClassDefinitionsTaxonomy}, decyzja użytkownika o zachowaniu kontraktu
- *   wstecz, sesja 2026-08-12).
+ * - `klasa_stanu`                 — ACF `taxonomy` (P-12.2a, REWIZJA D-1.2.1/
+ *   P-12.1a — poprzednio `select`), wymagane, single-value. Zapisuje REALNĄ
+ *   relację `wp_set_object_terms()` z {@see ClassDefinitionsTaxonomy}
+ *   (`save_terms`/`load_terms` włączone) — cutover, decyzja użytkownika,
+ *   sesja 2026-08-13, `docs/plan.md` P-12.2, D-12.2.1. Wcześniej pole było
+ *   `select` z `choices` dobudowywanymi dynamicznie z tego samego bytu, a
+ *   „przypisanie" klasy do produktu było gołym literałem w postmeta — ACF
+ *   teraz zarządza relacją natywnie, `choices` nie trzeba już wstrzykiwać
+ *   ręcznie (UI budowany z realnych termów taksonomii). Ryzyko operacyjne
+ *   przejścia (auto-mapa importu Allegro, backfill) — patrz docblock
+ *   {@see ClassDefinitionsTaxonomy}.
  * - `zawartosc_zestawu_pozycje`   — repeater (sub-pola `zdjecie`/`etykieta`/
  *   `w_zestawie`), opcjonalne. Zastępuje pole WYSIWYG `zawartosc_zestawu`
  *   z P-1.2 (D-9.2.1) — ground-truth P-8.2c ujawnił, że WYSIWYG
@@ -52,7 +53,10 @@ use WP_Screen;
  * Wzorzec dla kolejnych slice'ów rejestrujących pola (AllegroChannel, AiRewrite).
  *
  * `name` pola = `meta_key` w bazie — MUSI być zgodne z kontraktem, bo motyw
- * czyta dokładnie ten literał (`get_field()` / `get_post_meta()`).
+ * czyta dokładnie ten literał (`get_field()` / `get_post_meta()`). Wyjątek od
+ * P-12.2a: `klasa_stanu` (ACF `taxonomy`) NIE trzyma już swojej wartości jako
+ * plain literału w postmeta — konsumenci czytają przez {@see
+ * ClassDefinitionsTaxonomy::for_product()}.
  */
 final class ProductConditionFields {
 
@@ -71,12 +75,9 @@ final class ProductConditionFields {
 	private const FIELD_KEY_ALLEGRO_STAN_RAW = 'field_qutlet_allegro_stan_raw';
 
 	/**
-	 * Klucz pola `klasa_stanu` (P-12.1a) — dobudowuje `choices` z {@see
-	 * ClassDefinitionsTaxonomy} przez `acf/load_field/key=…` (NIE globalny hook
-	 * jak `acf/pre_render_field` przy {@see self::FIELD_KEY_ALLEGRO_STAN_RAW} —
-	 * WordPress dopisuje ten klucz do NAZWY hooka, więc filtr jest zawężony przez
-	 * sam mechanizm rejestracji, bez potrzeby ręcznego sprawdzenia klucza w ciele
-	 * callbacku).
+	 * Klucz pola `klasa_stanu` (P-12.1a; typ ACF od P-12.2a: `taxonomy`, patrz
+	 * {@see self::register()}) — VERBATIM z `qutlet-allegro\OfferSync\
+	 * ProductWriter::ACF_KEY_CONDITION`, kontrakt między repo.
 	 */
 	private const FIELD_KEY_KLASA_STANU = 'field_qutlet_klasa_stanu';
 
@@ -90,17 +91,16 @@ final class ProductConditionFields {
 	 * który dostaje `$post_id` wprost jako argument (`acf_render_fields()`), więc
 	 * nie trzeba zgadywać ID produktu z globalnego stanu.
 	 *
-	 * `acf/load_field` (P-12.1a) dobudowuje `choices` pola `klasa_stanu` z bytu
-	 * {@see ClassDefinitionsTaxonomy} — odpalane przy KAŻDYM ładowaniu definicji
-	 * pola (ekran edycji produktu, walidacja zapisu), więc nowo dodana klasa
-	 * (D-12.G1) jest widoczna od razu, bez cache'owania.
+	 * Pole `klasa_stanu` jest ACF `taxonomy` od P-12.2a (patrz {@see
+	 * self::register()}) — dodanie nowej klasy (D-12.G1) jest widoczne od razu
+	 * bez cache'owania, bo ACF czyta listę termów taksonomii na żywo przy
+	 * renderze; nie ma już osobnego kroku wstrzykiwania `choices`.
 	 *
 	 * @return void
 	 */
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
 		add_filter( 'acf/pre_render_field', array( self::class, 'inject_condition_raw_message' ), 10, 2 );
-		add_filter( 'acf/load_field/key=' . self::FIELD_KEY_KLASA_STANU, array( self::class, 'inject_dynamic_choices' ) );
 		add_action( 'admin_notices', array( self::class, 'render_missing_class_definitions_notice' ) );
 	}
 
@@ -127,23 +127,23 @@ final class ProductConditionFields {
 						'esc_html'     => 1,
 					),
 					array(
-						'key'          => self::FIELD_KEY_KLASA_STANU,
-						'label'        => __( 'Klasa stanu', 'qutlet-core' ),
-						'name'         => 'klasa_stanu',
-						'type'         => 'select',
-						'instructions' => __( 'Ocena stanu egzemplarza. Motyw zamienia literę na etykietę.', 'qutlet-core' ),
-						'required'     => 1,
-						// `choices` NIE są tu statyczne — dobudowywane na acf/load_field
-						// przez self::inject_dynamic_choices() z ClassDefinitionsTaxonomy.
-						// Puste tu naumyślnie: brak duplikowania danych bytu w kodzie.
-						'choices'      => array(),
-						'default_value' => '',
-						'allow_null'   => 0,
-						'multiple'     => 0,
-						'ui'           => 0,
-						'ajax'         => 0,
-						// Motyw dostaje literał (A/B/C/D) i sam mapuje na etykietę (kontrakt §6).
-						'return_format' => 'value',
+						'key'           => self::FIELD_KEY_KLASA_STANU,
+						'label'         => __( 'Klasa stanu', 'qutlet-core' ),
+						'name'          => 'klasa_stanu',
+						'type'          => 'taxonomy',
+						'instructions'  => __( 'Ocena stanu egzemplarza. Wybór tworzy realną relację z taksonomią „Klasy stanu" (Produkty → Klasy stanu).', 'qutlet-core' ),
+						'required'      => 1,
+						// P-12.2a (D-12.2.1, cutover): relacja NATYWNA z ClassDefinitionsTaxonomy —
+						// `save_terms`/`load_terms` włączone, ACF sam woła wp_set_object_terms()
+						// przy zapisie i czyta z relacji (get_the_terms()), nie z postmeta.
+						'taxonomy'      => ClassDefinitionsTaxonomy::TAXONOMY,
+						'field_type'    => 'select',
+						'add_term'      => 0, // Nowe klasy TYLKO przez ekran „Produkty → Klasy stanu" (D-12.G1) — nie ad-hoc z edycji produktu.
+						'save_terms'    => 1,
+						'load_terms'    => 1,
+						'multiple'      => 0,
+						'allow_null'    => 0,
+						'return_format' => 'id',
 					),
 					array(
 						'key'           => 'field_qutlet_zawartosc_zestawu_pozycje',
@@ -288,31 +288,6 @@ final class ProductConditionFields {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Dobudowuje `choices` pola `klasa_stanu` z {@see ClassDefinitionsTaxonomy}
-	 * (P-12.1a) — `value` = `kod` (join key, literał zapisywany na produkcie,
-	 * BEZ ZMIAN względem dawnego hardkodowanego A-D), `label` = opisowa `nazwa`
-	 * termu. Taksonomia niezasiedlona (przed uruchomieniem
-	 * {@see SeedClassDefinitionsCommand}) → `choices` zostaje pustą tablicą;
-	 * {@see self::render_missing_class_definitions_notice()} sygnalizuje ten
-	 * stan w adminie, zamiast po cichu wracać do hardkodowanego fallbacku
-	 * (co odtworzyłoby duplikację, którą ten byt ma zlikwidować).
-	 *
-	 * @param array<string,mixed> $field Definicja pola ACF przed renderem/walidacją.
-	 * @return array<string,mixed>
-	 */
-	public static function inject_dynamic_choices( array $field ): array {
-		$choices = array();
-
-		foreach ( ClassDefinitionsTaxonomy::all() as $kod => $definicja ) {
-			$choices[ $kod ] = $definicja['nazwa'];
-		}
-
-		$field['choices'] = $choices;
-
-		return $field;
 	}
 
 	/**

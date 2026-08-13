@@ -125,6 +125,15 @@ function bootstrap(): void {
 		 * seed bytu opisowego, nie backfill danych produktu.
 		 */
 		\WP_CLI::add_command( 'qutlet-core seed-klasa-stanu', ProductCondition\SeedClassDefinitionsCommand::class );
+
+		/*
+		 * ProductCondition (P-12.2a, D-12.2.3): jednorazowy backfill relacji
+		 * `klasa_stanu_definicja` dla produktów, które mają dziś TYLKO
+		 * historyczny literał `klasa_stanu` — patrz docblock komendy, czemu
+		 * to jest TWARDY WARUNEK WSTĘPNY (nie opcjonalne czyszczenie) cutoveru
+		 * pola na ACF `taxonomy`.
+		 */
+		\WP_CLI::add_command( 'qutlet-core backfill-klasa-stanu-relacja', ProductCondition\BackfillKlasaStanuRelationCommand::class );
 	}
 }
 
