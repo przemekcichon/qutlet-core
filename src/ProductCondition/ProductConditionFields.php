@@ -36,6 +36,14 @@ use WP_Screen;
  *   ręcznie (UI budowany z realnych termów taksonomii). Ryzyko operacyjne
  *   przejścia (auto-mapa importu Allegro, backfill) — patrz docblock
  *   {@see ClassDefinitionsTaxonomy}.
+ * - (message, read-only) `Gwarancja / reklamacja dla wybranej klasy` — P-13.7b.
+ *   Nie zapisuje żadnej wartości; treść dopisywana dynamicznie na
+ *   `acf/pre_render_field` ({@see self::inject_klasa_stanu_terminy_message()}).
+ *   Odczyt okresów gwarancji/reklamacji USTAWOWEJ z bytu klasy stanu
+ *   PRZYPISANEJ dziś do produktu ({@see ClassDefinitionsTaxonomy::for_product()},
+ *   pola `okres_gwarancji_miesiace`/`okres_reklamacji_miesiace`, P-12.1a) —
+ *   informacyjnie, żeby kurator widział konsekwencję wyboru `klasa_stanu` bez
+ *   przechodzenia do ekranu „Produkty → Klasy stanu".
  * - `zawartosc_zestawu_pozycje`   — repeater (sub-pola `zdjecie`/`etykieta`/
  *   `w_zestawie`), opcjonalne. Zastępuje pole WYSIWYG `zawartosc_zestawu`
  *   z P-1.2 (D-9.2.1) — ground-truth P-8.2c ujawnił, że WYSIWYG
@@ -82,12 +90,22 @@ final class ProductConditionFields {
 	private const FIELD_KEY_KLASA_STANU = 'field_qutlet_klasa_stanu';
 
 	/**
+	 * Klucz pola read-only (typ ACF `message`, P-13.7b) — informacja o
+	 * okresach gwarancji/reklamacji USTAWOWEJ zdefiniowanych na bycie klasy
+	 * ({@see ClassDefinitionsTaxonomy}) PRZYPISANEJ dziś do tego produktu.
+	 * Guard analogiczny do {@see self::FIELD_KEY_ALLEGRO_STAN_RAW} —
+	 * `acf/pre_render_field` jest globalny.
+	 */
+	private const FIELD_KEY_KLASA_STANU_TERMINY = 'field_qutlet_klasa_stanu_terminy';
+
+	/**
 	 * Wpina rejestrację na `acf/init` — moment, w którym ACF jest gotowe na
 	 * `acf_add_local_field_group()` (zalecenie ACF). Wołane z bootstrapu core
 	 * (na `plugins_loaded`, po sprawdzeniu twardych zależności — patrz D-G5).
 	 *
-	 * `acf/pre_render_field` (P-13.7a) dopisuje treść pola-komunikatu
-	 * {@see self::FIELD_KEY_ALLEGRO_STAN_RAW} PRZED renderem — jedyny hook ACF,
+	 * `acf/pre_render_field` (P-13.7a, rozszerzone P-13.7b) dopisuje treść pól-
+	 * komunikatów {@see self::FIELD_KEY_ALLEGRO_STAN_RAW} i {@see
+	 * self::FIELD_KEY_KLASA_STANU_TERMINY} PRZED renderem — jedyny hook ACF,
 	 * który dostaje `$post_id` wprost jako argument (`acf_render_fields()`), więc
 	 * nie trzeba zgadywać ID produktu z globalnego stanu.
 	 *
@@ -101,6 +119,7 @@ final class ProductConditionFields {
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
 		add_filter( 'acf/pre_render_field', array( self::class, 'inject_condition_raw_message' ), 10, 2 );
+		add_filter( 'acf/pre_render_field', array( self::class, 'inject_klasa_stanu_terminy_message' ), 10, 2 );
 		add_filter( 'acf/format_value/key=' . self::FIELD_KEY_KLASA_STANU, array( self::class, 'format_condition_as_kod' ), 20 );
 		add_action( 'admin_notices', array( self::class, 'render_missing_class_definitions_notice' ) );
 	}
@@ -145,6 +164,16 @@ final class ProductConditionFields {
 						'multiple'      => 0,
 						'allow_null'    => 0,
 						'return_format' => 'id',
+					),
+					array(
+						'key'          => self::FIELD_KEY_KLASA_STANU_TERMINY,
+						'label'        => __( 'Gwarancja / reklamacja dla wybranej klasy', 'qutlet-core' ),
+						'name'         => 'klasa_stanu_terminy_display',
+						'type'         => 'message',
+						// Treść dopisywana dynamicznie — patrz self::inject_klasa_stanu_terminy_message().
+						'message'      => '',
+						'new_lines'    => '',
+						'esc_html'     => 1,
 					),
 					array(
 						'key'           => 'field_qutlet_zawartosc_zestawu_pozycje',
@@ -289,6 +318,65 @@ final class ProductConditionFields {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Dopisuje treść pola-komunikatu {@see self::FIELD_KEY_KLASA_STANU_TERMINY}
+	 * TUŻ PRZED renderem (P-13.7b) — sam guard i mechanizm identyczny jak
+	 * {@see self::inject_condition_raw_message()}.
+	 *
+	 * @param array<string,mixed> $field   Definicja pola ACF przed renderem.
+	 * @param int|string          $post_id ID kontekstu formularza ACF (tu: ID produktu).
+	 * @return array<string,mixed>
+	 */
+	public static function inject_klasa_stanu_terminy_message( array $field, $post_id ): array {
+		if ( self::FIELD_KEY_KLASA_STANU_TERMINY !== ( $field['key'] ?? null ) ) {
+			return $field;
+		}
+
+		$product_id       = is_numeric( $post_id ) ? (int) $post_id : 0;
+		$field['message'] = self::klasa_stanu_terminy_message( $product_id );
+
+		return $field;
+	}
+
+	/**
+	 * Treść komunikatu: gwarancja/reklamacja USTAWOWEJ klasy PRZYPISANEJ dziś
+	 * do produktu (relacja, {@see ClassDefinitionsTaxonomy::for_product()}),
+	 * albo nota o jej braku (produkt jeszcze niesklasyfikowany — świeży
+	 * `auto-draft` albo niezrelacjonowany, patrz docblock
+	 * {@see ClassDefinitionsTaxonomy::for_product()}).
+	 *
+	 * Okresy wyświetlane w miesiącach (skrót „mies.") — ta sama jednostka co
+	 * label pól definicji klasy (`Okres gwarancji (miesiące)` §2.2 kontraktu),
+	 * bez konwersji na lata: pluralizacja polska (1 rok/2-4 lata/5+ lat) jest
+	 * już zaimplementowana w `qutlet-theme\ProductPage::period_years_text()`
+	 * (front klienta) — core NIE importuje kodu z theme (granica repo,
+	 * `CLAUDE.md` §Struktura), a ten komunikat jest wyłącznie informacją dla
+	 * kuratora w adminie, nie treścią klienta, więc duplikowanie tamtej
+	 * pluralizacji tutaj byłoby zbędną abstrakcją.
+	 *
+	 * @param int $product_id ID produktu (0 = brak kontekstu, np. formularz poza ekranem edycji produktu).
+	 * @return string
+	 */
+	private static function klasa_stanu_terminy_message( int $product_id ): string {
+		if ( $product_id <= 0 ) {
+			return __( 'Brak kontekstu produktu.', 'qutlet-core' );
+		}
+
+		$definicja = ClassDefinitionsTaxonomy::for_product( $product_id );
+
+		if ( null === $definicja ) {
+			return __( 'Produkt nie ma jeszcze przypisanej klasy stanu — wybierz i zapisz klasę, żeby zobaczyć jej okresy gwarancji i reklamacji.', 'qutlet-core' );
+		}
+
+		return sprintf(
+			/* translators: 1: nazwa klasy stanu (np. „Jak nowy"), 2: okres gwarancji w miesiącach, 3: okres reklamacji w miesiącach. */
+			__( 'Klasa „%1$s" → gwarancja: %2$d mies., reklamacja: %3$d mies.', 'qutlet-core' ),
+			$definicja['nazwa'],
+			$definicja['okres_gwarancji_miesiace'],
+			$definicja['okres_reklamacji_miesiace']
+		);
 	}
 
 	/**
