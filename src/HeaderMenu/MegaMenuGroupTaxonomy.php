@@ -58,14 +58,23 @@ final class MegaMenuGroupTaxonomy {
 	public const TAXONOMY = 'mega_menu_grupa';
 
 	/**
-	 * Slug rodzica w menu admina — Wygląd → Menu (D-16.G2/kontrakt §14.3:
+	 * Slug TOP-LEVEL rodzica w menu admina — Wygląd (D-16.G2/kontrakt §14.3:
 	 * „zagnieżdżony pod Wygląd, obok Menu", NIE pod Produkty jak
-	 * `klasa_stanu_definicja`). Jedyne miejsce użycia: {@see
-	 * self::register_admin_submenu()} — `register_taxonomy()` dostaje zwykłe
-	 * `show_in_menu => true` (patrz „Uwaga vs. plan" w docblocku klasy, czemu
-	 * NIE ten string).
+	 * `klasa_stanu_definicja`). MUSI być top-level slug (`themes.php`), NIE
+	 * `nav-menus.php` — `nav-menus.php` to SAMO submenu „Menu" pod `themes.php`
+	 * (`$submenu['themes.php'][10] = […, 'nav-menus.php']`, `wp-admin/menu.php`
+	 * tej instalacji), a `add_submenu_page()` (`wp-admin/includes/plugin.php`)
+	 * dopisuje WYŁĄCZNIE do `$submenu[$parent_slug]`, gdzie `$parent_slug` musi
+	 * być kluczem `$menu` (top-level) — sidebar admina renderuje `$submenu[...]`
+	 * TYLKO dla top-level slugów z `$menu`, więc wpis pod `nav-menus.php` ląduje
+	 * w tablicy, którą nic nigdy nie odczytuje (zero błędu, po prostu niewidoczny
+	 * link — realny bug tej sesji, zgłoszony przez użytkownika po ręcznym
+	 * sprawdzeniu Wygląd w adminie, P-16.2a nie zweryfikowało tego runtime).
+	 * Jedyne miejsce użycia: {@see self::register_admin_submenu()} —
+	 * `register_taxonomy()` dostaje zwykłe `show_in_menu => true` (patrz „Uwaga
+	 * vs. plan" w docblocku klasy, czemu NIE string).
 	 */
-	private const ADMIN_PARENT_SLUG = 'nav-menus.php';
+	private const ADMIN_PARENT_SLUG = 'themes.php';
 
 	/**
 	 * Klucz grupy pól ACF (term meta).
