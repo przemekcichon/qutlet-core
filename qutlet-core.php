@@ -111,6 +111,13 @@ function bootstrap(): void {
 	// ceny. Render formularza — qutlet-theme, ta sama nazwa slice'a.
 	ProductFilters\ProductFilterQuery::init();
 
+	// HeaderMenu (P-16.2a, D-16.G1): taksonomia grup mega menu (kolumny) + pola
+	// ACF pozycji menu kategorii (`widoczna_na_belce`, `grupa_mega_menu`) —
+	// core rejestruje pola/taksonomię, qutlet-theme (P-16.2b) rejestruje
+	// lokalizację `kategorie` i renderuje (ta sama nazwa slice'a w obu repo).
+	HeaderMenu\MegaMenuGroupTaxonomy::init();
+	HeaderMenu\MenuItemFields::init();
+
 	/*
 	 * ProductInfo (P-13.3a, D-13.G3): jednorazowy backfill wycofanego pola ACF `opis`
 	 * → natywne `post_content`, na produktach zsynchronizowanych PRZED tym punktem.
