@@ -27,6 +27,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 const VERSION = '0.1.0';
 
+/**
+ * Ścieżka głównego pliku wtyczki — punkt odniesienia dla `plugins_url()`
+ * wołanego z klas w `src/` (wzorzec `\Qutlet\Ai\PLUGIN_FILE`, `qutlet-ai.php`).
+ */
+const PLUGIN_FILE = __FILE__;
+
 /*
  * Autoloader Composera (D-G1): ładowany z guardem. Brak `vendor/autoload.php`
  * NIE jest fatal errorem — pokazujemy notice w adminie i przerywamy bootstrap,
@@ -117,6 +123,12 @@ function bootstrap(): void {
 	// lokalizację `kategorie` i renderuje (ta sama nazwa slice'a w obu repo).
 	HeaderMenu\MegaMenuGroupTaxonomy::init();
 	HeaderMenu\MenuItemFields::init();
+
+	// ProductReviewWizard (P-17.2, D-17.1/D-17.3/D-17.4/D-17.6): nakładka nad
+	// ekranem edycji produktu spinająca WIDOCZNOŚĆ istniejących metaboxów
+	// (core + qutlet-ai) w kroki, plus NOWY metabox podglądu kategorii
+	// (D-17.3, read-only) — bez zmiany logiki zapisu żadnego z pól.
+	ProductReviewWizard\ProductReviewWizard::init();
 
 	/*
 	 * ProductInfo (P-13.3a, D-13.G3): jednorazowy backfill wycofanego pola ACF `opis`
