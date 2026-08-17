@@ -1,0 +1,155 @@
+/**
+ * Qutlet Core — kreator (wizard) przeglądu produktu (P-17.2, D-17.6).
+ *
+ * Styl WŁASNY, wzorowany WYŁĄCZNIE WIZUALNIE na onboardingowym „Setup Wizard"
+ * WooCommerce (`includes/admin/class-wc-admin-setup-wizard.php` +
+ * `assets/css/wc-setup.scss`, klasa @deprecated 4.6.0, nie publiczne API) —
+ * bez importu/enqueue plików WooCommerce. Kolor akcentu to marka Qutlet
+ * (`theme.json` → paleta `accent`/`accent-deep`), nie fioletowy WooCommerce.
+ */
+
+.qutlet-wizard-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	overflow-y: auto;
+	padding: 5vh 20px;
+	background: rgba( 23, 20, 27, 0.55 );
+}
+
+.qutlet-wizard-overlay[hidden] {
+	display: none;
+}
+
+.qutlet-wizard-card {
+	width: 100%;
+	max-width: 780px;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 4px 24px rgba( 0, 0, 0, 0.25 );
+	padding: 2em;
+	text-align: left;
+}
+
+.qutlet-wizard-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 1em;
+}
+
+.qutlet-wizard-header h2 {
+	margin: 0;
+	font-weight: 500;
+	color: #1e1e1e;
+}
+
+.qutlet-wizard-close {
+	background: none;
+	border: none;
+	font-size: 1.5em;
+	line-height: 1;
+	cursor: pointer;
+	color: #757575;
+	padding: 0 0.25em;
+}
+
+.qutlet-wizard-close:hover,
+.qutlet-wizard-close:focus {
+	color: #1e1e1e;
+}
+
+.qutlet-wizard-steps {
+	display: flex;
+	list-style: none;
+	margin: 0 0 1.5em;
+	padding: 0;
+}
+
+.qutlet-wizard-steps li {
+	flex: 1;
+	text-align: center;
+	position: relative;
+	padding-bottom: 0.8em;
+	border-bottom: 4px solid #ccc;
+	color: #757575;
+	cursor: pointer;
+	font-size: 0.9em;
+}
+
+.qutlet-wizard-dot {
+	display: block;
+	width: 10px;
+	height: 10px;
+	border-radius: 100%;
+	background: #fff;
+	border: 4px solid #ccc;
+	margin: 0 auto 0.5em;
+	position: relative;
+	top: 0.8em;
+}
+
+.qutlet-wizard-steps li.is-active,
+.qutlet-wizard-steps li.is-done {
+	border-color: #7c2fe0;
+	color: #7c2fe0;
+	font-weight: 600;
+}
+
+.qutlet-wizard-steps li.is-active .qutlet-wizard-dot,
+.qutlet-wizard-steps li.is-done .qutlet-wizard-dot {
+	border-color: #7c2fe0;
+}
+
+.qutlet-wizard-steps li.is-done .qutlet-wizard-dot {
+	background: #7c2fe0;
+}
+
+.qutlet-wizard-body {
+	min-height: 12em;
+	margin-bottom: 1.5em;
+}
+
+.qutlet-wizard-body .postbox {
+	box-shadow: none;
+	border: none;
+	margin: 0;
+}
+
+.qutlet-wizard-actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-top: 1px solid #dcdcde;
+	padding-top: 1.5em;
+}
+
+.qutlet-wizard-actions .button-hero {
+	border-radius: 999px;
+	padding: 0 1.75em;
+	height: 2.75em;
+	line-height: 2.75em;
+	background: #7c2fe0;
+	border-color: #7c2fe0;
+}
+
+.qutlet-wizard-actions .button-hero:hover,
+.qutlet-wizard-actions .button-hero:focus {
+	background: #6620c4;
+	border-color: #6620c4;
+}
+
+.qutlet-wizard-actions .button-hero:disabled {
+	opacity: 0.5;
+}
+
+body.qutlet-wizard-open {
+	overflow: hidden;
+}
+
+.qutlet-wizard-trigger-row {
+	margin: 1em 0;
+}
