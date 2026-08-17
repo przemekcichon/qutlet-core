@@ -239,6 +239,19 @@ final class ProductConditionFields {
 	}
 
 	/**
+	 * ID metaboxa renderowanego przez ACF dla tej grupy (`acf-{key}`, wzorzec
+	 * potwierdzony w `Acf_Form_Post::add_meta_boxes()`,
+	 * `includes/forms/form-post.php` w ACF PRO). Publiczne dla konsumentów
+	 * spoza slice'a (P-17.2 — kreator identyfikuje box po DOM id, bez
+	 * zgadywania literału).
+	 *
+	 * @return string
+	 */
+	public static function metabox_id(): string {
+		return 'acf-' . self::GROUP_KEY;
+	}
+
+	/**
 	 * Dopisuje treść pola-komunikatu {@see self::FIELD_KEY_ALLEGRO_STAN_RAW}
 	 * TUŻ PRZED renderem (P-13.7a). Filtr jest GLOBALNY (fires dla każdego pola
 	 * ACF w adminie) — pierwszy warunek odsiewa wszystko, co nie jest naszym
