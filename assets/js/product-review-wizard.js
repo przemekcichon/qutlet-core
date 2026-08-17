@@ -9,6 +9,14 @@
  * przenoszone pola zostają więc wewnątrz tego samego formularza, więc
  * zbiorczy submit Woo (kroki 3–5) działa bez zmian; kroki 1–2 (qutlet-ai)
  * mają własny AJAX, niezależny od tego submitu.
+ *
+ * Oryginalne miejsce każdego dotkniętego węzła zapamiętujemy przez niewidoczny
+ * placeholder (komentarz DOM) wstawiony TUŻ PRZED nim, nie przez porównanie
+ * „czy mój zapamiętany nextSibling już wrócił" — ta druga heurystyka myli
+ * kolejność przy przywracaniu dwóch węzłów tego samego kroku, jeśli okażą się
+ * bezpośrednimi sąsiadami w DOM (pierwszy przywrócony ląduje na końcu
+ * rodzica zamiast na swoim miejscu). Placeholder działa niezależnie od
+ * kolejności przywracania.
  */
 ( function () {
 	var config = window.qutletProductReviewWizard;
@@ -23,13 +31,13 @@
 		return;
 	}
 
-	var originalPositions = new Map(); // el -> { parent, next } — pozycja PRZED dotknięciem przez kreator.
-	var managedElements = new Set(); // każdy węzeł kiedykolwiek schowany/przeniesiony w tej sesji kreatora — pełny reset na close().
+	var originalPositions = new Map(); // el -> { placeholder, display } — miejsce/widoczność PRZED dotknięciem przez kreator.
 	var currentStepNodes = [];
 	var currentStepIndex = 0;
 
 	var overlay = buildOverlay();
 	var stepsListEl = overlay.querySelector( '[data-qutlet-wizard-steps]' );
+	var stepDots = Array.prototype.slice.call( stepsListEl.querySelectorAll( '[data-qutlet-wizard-step-index]' ) );
 	var bodyEl = overlay.querySelector( '[data-qutlet-wizard-body]' );
 	var backBtn = overlay.querySelector( '[data-qutlet-wizard-back]' );
 	var nextBtn = overlay.querySelector( '[data-qutlet-wizard-next]' );
@@ -67,7 +75,7 @@
 
 	nextBtn.addEventListener( 'click', function () {
 		if ( currentStepIndex >= config.steps.length - 1 ) {
-			close();
+			finish();
 
 			return;
 		}
@@ -99,23 +107,39 @@
 	function close() {
 		currentStepNodes = [];
 
-		// Pełny reset: KAŻDY węzeł kiedykolwiek schowany/przeniesiony w tej
-		// sesji (postboxy schowane na open(), pola przenoszone między
-		// krokami) wraca na oryginalne miejsce i staje się znów widoczny —
-		// nie tylko bieżący krok (bug: element opuszczony przez goToStep()
-		// zostawał widoczny na starym miejscu, bo tylko chowaliśmy CAŁE
-		// postboxy na open(), a pojedyncze przenoszone węzły nigdy nie
-		// wracały do stanu display:none).
-		managedElements.forEach( function ( el ) {
-			restorePosition( el );
-			el.style.display = '';
+		// Pełny reset: KAŻDY węzeł kiedykolwiek dotknięty w tej sesji wraca na
+		// swoje miejsce i odzyskuje SWOJĄ oryginalną widoczność — nie zawsze
+		// '' (widoczny). Postbox schowany wcześniej przez użytkownika przez
+		// „Opcje ekranu" (inline `display:none` z jQuery `.hide()`, WP core
+		// `postbox.js`) ma wrócić schowany, nie zostać przywrócony na siłę.
+		originalPositions.forEach( function ( pos, el ) {
+			releaseNode( el, pos.display );
+
+			if ( pos.placeholder.parentNode ) {
+				pos.placeholder.parentNode.removeChild( pos.placeholder );
+			}
 		} );
 
-		managedElements.clear();
 		originalPositions.clear();
 
 		overlay.hidden = true;
 		document.body.classList.remove( 'qutlet-wizard-open' );
+	}
+
+	function finish() {
+		close();
+
+		// D-17.1: kreator to WYŁĄCZNIE nakładka nawigacyjna, bez własnego
+		// zapisu — pola kroków 3–5 (bez AJAX-a) żyją w natywnym `<form
+		// id="post">` i zapisują się dopiero przy zbiorczym submicie Woo/WP.
+		// „Zakończ" woła NATYWNY przycisk Update (`#publish`, ten sam kod co
+		// ręczne kliknięcie — nonce/walidacja WP bez zmian), żeby te pola
+		// faktycznie się zapisały zamiast cicho zniknąć razem z modalem.
+		var publishBtn = document.getElementById( 'publish' );
+
+		if ( publishBtn ) {
+			publishBtn.click();
+		}
 	}
 
 	function goToStep( index ) {
@@ -124,8 +148,7 @@
 		}
 
 		currentStepNodes.forEach( function ( el ) {
-			restorePosition( el );
-			el.style.display = 'none'; // Opuszczony krok — wraca do stanu „schowany", jak reszta postboxów.
+			releaseNode( el, 'none' ); // Opuszczony krok — wraca do stanu „schowany", jak reszta postboxów w trakcie sesji.
 		} );
 		currentStepNodes = [];
 
@@ -147,31 +170,29 @@
 	}
 
 	function rememberPosition( el ) {
-		managedElements.add( el );
-
 		if ( originalPositions.has( el ) ) {
 			return;
 		}
 
-		originalPositions.set( el, { parent: el.parentNode, next: el.nextSibling } );
+		var placeholder = document.createComment( 'qutlet-wizard-placeholder' );
+		el.parentNode.insertBefore( placeholder, el );
+
+		originalPositions.set( el, { placeholder: placeholder, display: el.style.display } );
 	}
 
-	function restorePosition( el ) {
+	function releaseNode( el, display ) {
 		var pos = originalPositions.get( el );
 
-		if ( ! pos ) {
+		if ( ! pos || ! pos.placeholder.parentNode ) {
 			return;
 		}
 
-		if ( pos.next && pos.next.parentNode === pos.parent ) {
-			pos.parent.insertBefore( el, pos.next );
-		} else {
-			pos.parent.appendChild( el );
-		}
+		pos.placeholder.parentNode.insertBefore( el, pos.placeholder );
+		el.style.display = display;
 	}
 
 	function updateChrome() {
-		stepsListEl.querySelectorAll( '[data-qutlet-wizard-step-index]' ).forEach( function ( dot, i ) {
+		stepDots.forEach( function ( dot, i ) {
 			dot.classList.toggle( 'is-active', i === currentStepIndex );
 			dot.classList.toggle( 'is-done', i < currentStepIndex );
 		} );
