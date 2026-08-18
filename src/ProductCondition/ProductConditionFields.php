@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace Qutlet\Core\ProductCondition;
 
 use Qutlet\Core\ProductInfo\RawLayerMeta;
+use WC_Product;
 use WP_Screen;
 
 /**
@@ -25,6 +26,16 @@ use WP_Screen;
  *   P-13.7a) — core NIE importuje klas z `qutlet-allegro` (granica repo,
  *   `CLAUDE.md` §Struktura), więc ta mała ekstrakcja jest zduplikowana
  *   intencjonalnie; jeśli mapping „Stan" w allegro się zmieni, zsynchronizuj tu.
+ * - (message, read-only) `Stan opakowania wg Allegro (surowy, tylko do odczytu)`
+ *   — P-21.6. Nie zapisuje żadnej wartości; treść dopisywana dynamicznie na
+ *   `acf/pre_render_field` ({@see self::inject_packaging_condition_message()}).
+ *   W odróżnieniu od pola wyżej, NIE re-parsuje `_qutlet_allegro_offer` —
+ *   „Stan opakowania" (D-21.5.1, kontrakt §18) jest custom atrybutem WC
+ *   (`id=0`, sync-owned, nadpisywany KAŻDYM przebiegiem, {@see
+ *   \Qutlet\Allegro\OfferSync\ProductWriter::append_packaging_condition()}), więc
+ *   odczyt idzie przez `WC_Product::get_attribute()` (etykieta VERBATIM
+ *   `Stan opakowania`, {@see self::PACKAGING_CONDITION_ATTRIBUTE_LABEL}) — nie
+ *   ma osobnego pola raw-layer do parsowania (D-21.5.1 pkt 4).
  * - `klasa_stanu`                 — ACF `taxonomy` (P-12.2a, REWIZJA D-1.2.1/
  *   P-12.1a — poprzednio `select`), wymagane, single-value. Zapisuje REALNĄ
  *   relację `wp_set_object_terms()` z {@see ClassDefinitionsTaxonomy}
@@ -81,6 +92,22 @@ final class ProductConditionFields {
 	private const FIELD_KEY_ALLEGRO_STAN_RAW = 'field_qutlet_allegro_stan_raw';
 
 	/**
+	 * Klucz pola read-only (typ ACF `message`, P-21.6) — surowy podgląd
+	 * atrybutu WC „Stan opakowania". Guard analogiczny do {@see
+	 * self::FIELD_KEY_ALLEGRO_STAN_RAW} — `acf/pre_render_field` jest globalny.
+	 */
+	private const FIELD_KEY_ALLEGRO_STAN_OPAKOWANIA_RAW = 'field_qutlet_allegro_stan_opakowania_raw';
+
+	/**
+	 * Etykieta atrybutu WC „Stan opakowania" (D-21.5.1, kontrakt §18) —
+	 * VERBATIM z `qutlet-allegro\OfferSync\ProductWriter::PACKAGING_CONDITION_LABEL`,
+	 * kontrakt między repo. Custom atrybut lokalny (`id=0`), nie taksonomia —
+	 * `WC_Product::get_attribute()` dopasowuje po tej etykiecie (sanitize_title()
+	 * wewnętrznie), nie po `meta_key`/ACF.
+	 */
+	private const PACKAGING_CONDITION_ATTRIBUTE_LABEL = 'Stan opakowania';
+
+	/**
 	 * Klucz pola `klasa_stanu` (P-12.1a; typ ACF od P-12.2a: `taxonomy`, patrz
 	 * {@see self::register()}) — VERBATIM z `qutlet-allegro\OfferSync\
 	 * ProductWriter::ACF_KEY_CONDITION`, kontrakt między repo.
@@ -117,6 +144,7 @@ final class ProductConditionFields {
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
 		add_filter( 'acf/pre_render_field', array( self::class, 'inject_condition_raw_message' ), 10, 2 );
+		add_filter( 'acf/pre_render_field', array( self::class, 'inject_packaging_condition_message' ), 10, 2 );
 		add_filter( 'acf/pre_render_field', array( self::class, 'inject_klasa_stanu_terminy_message' ), 10, 2 );
 		add_filter( 'acf/format_value/key=' . self::FIELD_KEY_KLASA_STANU, array( self::class, 'format_condition_as_kod' ), 20 );
 		add_action( 'admin_notices', array( self::class, 'render_missing_class_definitions_notice' ) );
@@ -139,6 +167,17 @@ final class ProductConditionFields {
 						'name'         => 'allegro_stan_raw_display',
 						'type'         => 'message',
 						// Treść dopisywana dynamicznie — patrz self::inject_condition_raw_message().
+						'message'      => '',
+						'new_lines'    => '',
+						// Wartość zewnętrzna (Allegro) — escapujemy przy renderze, nie ufamy jej ślepo.
+						'esc_html'     => 1,
+					),
+					array(
+						'key'          => self::FIELD_KEY_ALLEGRO_STAN_OPAKOWANIA_RAW,
+						'label'        => __( 'Stan opakowania wg Allegro (surowy, tylko do odczytu)', 'qutlet-core' ),
+						'name'         => 'allegro_stan_opakowania_raw_display',
+						'type'         => 'message',
+						// Treść dopisywana dynamicznie — patrz self::inject_packaging_condition_message().
 						'message'      => '',
 						'new_lines'    => '',
 						// Wartość zewnętrzna (Allegro) — escapujemy przy renderze, nie ufamy jej ślepo.
@@ -288,6 +327,75 @@ final class ProductConditionFields {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Dopisuje treść pola-komunikatu {@see self::FIELD_KEY_ALLEGRO_STAN_OPAKOWANIA_RAW}
+	 * TUŻ PRZED renderem (P-21.6) — sam guard i mechanizm identyczny jak
+	 * {@see self::inject_condition_raw_message()}.
+	 *
+	 * @param array<string,mixed> $field   Definicja pola ACF przed renderem.
+	 * @param int|string          $post_id ID kontekstu formularza ACF (tu: ID produktu).
+	 * @return array<string,mixed>
+	 */
+	public static function inject_packaging_condition_message( array $field, $post_id ): array {
+		if ( self::FIELD_KEY_ALLEGRO_STAN_OPAKOWANIA_RAW !== ( $field['key'] ?? null ) ) {
+			return $field;
+		}
+
+		$product_id       = is_numeric( $post_id ) ? (int) $post_id : 0;
+		$field['message'] = self::packaging_condition_message( $product_id );
+
+		return $field;
+	}
+
+	/**
+	 * Treść komunikatu: surowa wartość atrybutu WC „Stan opakowania" albo nota
+	 * o jej braku.
+	 *
+	 * @param int $product_id ID produktu (0 = brak kontekstu, np. formularz poza ekranem edycji produktu).
+	 * @return string
+	 */
+	private static function packaging_condition_message( int $product_id ): string {
+		if ( $product_id <= 0 ) {
+			return __( 'Brak kontekstu produktu.', 'qutlet-core' );
+		}
+
+		$raw = self::packaging_condition_from_attribute( $product_id );
+
+		if ( null === $raw ) {
+			return __( 'Brak atrybutu „Stan opakowania" — produkt nie pochodzi z Allegro (utworzony ręcznie), oferta nie przekazała tego parametru, albo nie był jeszcze zsynchronizowany.', 'qutlet-core' );
+		}
+
+		return sprintf(
+			/* translators: %s: surowa wartość atrybutu „Stan opakowania" z Allegro (np. „oryginalne"). */
+			__( 'Allegro zwraca: „%s"', 'qutlet-core' ),
+			$raw
+		);
+	}
+
+	/**
+	 * Surowa wartość custom atrybutu WC „Stan opakowania" (D-21.5.1, kontrakt
+	 * §18) — w odróżnieniu od {@see self::condition_raw_from_offer()} NIE
+	 * re-parsuje `_qutlet_allegro_offer` (brak osobnego pola raw-layer dla tej
+	 * wartości, D-21.5.1 pkt 4); atrybut jest sync-owned (nadpisywany KAŻDYM
+	 * przebiegiem importu, {@see
+	 * \Qutlet\Allegro\OfferSync\ProductWriter::append_packaging_condition()}),
+	 * więc `WC_Product::get_attribute()` zawsze zwraca aktualną wartość.
+	 *
+	 * @param int $product_id ID produktu.
+	 * @return string|null
+	 */
+	private static function packaging_condition_from_attribute( int $product_id ): ?string {
+		$product = wc_get_product( $product_id );
+
+		if ( ! ( $product instanceof WC_Product ) ) {
+			return null;
+		}
+
+		$value = trim( $product->get_attribute( self::PACKAGING_CONDITION_ATTRIBUTE_LABEL ) );
+
+		return '' !== $value ? $value : null;
 	}
 
 	/**
