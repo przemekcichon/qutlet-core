@@ -66,8 +66,8 @@ final class DiscountRateSettingsPage {
 	public static function register_menu(): void {
 		add_submenu_page(
 			'woocommerce',
-			__( 'Qutlet — stawka rabatu', 'qutlet-core' ),
-			__( 'Qutlet — stawka rabatu', 'qutlet-core' ),
+			__( 'Stawka rabatu', 'qutlet-core' ),
+			__( 'Stawka rabatu', 'qutlet-core' ),
 			self::CAPABILITY,
 			self::PAGE_SLUG,
 			array( self::class, 'render_page' )
@@ -116,7 +116,7 @@ final class DiscountRateSettingsPage {
 		$value = is_string( $value ) ? $value : '';
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Qutlet — stawka rabatu', 'qutlet-core' ); ?></h1>
+			<h1><?php esc_html_e( 'Stawka rabatu', 'qutlet-core' ); ?></h1>
 			<p>
 				<?php
 				esc_html_e(
