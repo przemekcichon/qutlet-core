@@ -14,6 +14,7 @@ use Qutlet\Core\AllegroChannel\AllegroChannelFields;
 use Qutlet\Core\Pricing\DiscountRate;
 use Qutlet\Core\ProductCondition\MarketPriceField;
 use Qutlet\Core\ProductCondition\ProductConditionFields;
+use Qutlet\Core\ProductCondition\ShipmentContentsFields;
 use WP_Post;
 
 /**
@@ -167,7 +168,10 @@ final class ProductReviewWizard {
 			),
 			array(
 				'title'     => __( 'Stan i zawartość', 'qutlet-core' ),
-				'selectors' => array( '#' . ProductConditionFields::metabox_id() ),
+				'selectors' => array(
+					'#' . ProductConditionFields::metabox_id(),
+					'#' . ShipmentContentsFields::metabox_id(),
+				),
 			),
 			array(
 				'title'     => __( 'Kanał Allegro', 'qutlet-core' ),

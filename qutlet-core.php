@@ -70,6 +70,10 @@ function bootstrap(): void {
 	// sam wpina swoje hooki — bootstrap tylko go inicjalizuje.
 	ProductCondition\ProductConditionFields::init();
 
+	// ProductCondition (P-20.8, D-20.11): „Zawartość przesyłki" wydzielona do
+	// osobnego metaboksu/grupy ACF — patrz docblock ShipmentContentsFields.
+	ProductCondition\ShipmentContentsFields::init();
+
 	// ProductCondition (P-12.1a): byt „definicja klasy stanu" (taksonomia +
 	// term meta) — źródło `choices` pola `klasa_stanu` (D-1.2.1 REWIZJA,
 	// patrz docblocki ProductConditionFields/ClassDefinitionsTaxonomy).

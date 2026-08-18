@@ -44,12 +44,10 @@ use WP_Screen;
  *   pola `okres_gwarancji_miesiace`/`okres_reklamacji_miesiace`, P-12.1a) —
  *   informacyjnie, żeby kurator widział konsekwencję wyboru `klasa_stanu` bez
  *   przechodzenia do ekranu „Produkty → Klasy stanu".
- * - `zawartosc_zestawu_pozycje`   — repeater (sub-pola `zdjecie`/`etykieta`/
- *   `w_zestawie`), opcjonalne. Zastępuje pole WYSIWYG `zawartosc_zestawu`
- *   z P-1.2 (D-9.2.1) — ground-truth P-8.2c ujawnił, że WYSIWYG
- *   (`media_upload=0`, `toolbar=basic`) nie udźwignie ani zdjęć karuzeli, ani
- *   struktury pozycja+flaga wymaganej przez `.ship-grid` (`produkt.html:142-173`).
- *   Stare pole nigdy nie miało danych (produkt niewystawiony) — bez migracji.
+ *
+ * `zawartosc_zestawu_pozycje` NIE jest już tu rejestrowane (P-20.8, REWIZJA
+ * D-20.11) — wydzielone do osobnej grupy/metaboksu {@see ShipmentContentsFields}
+ * („Zawartość przesyłki"), ten sam `key`/`name`/sub-pola, bez migracji danych.
  *
  * `cena_rynkowa_nowego` NIE jest już tu rejestrowane (P-13.5, REWIZJA
  * P-1.2/P-9.2) — przeniesione do natywnej zakładki „Ogólne" Product Data,
@@ -133,7 +131,7 @@ final class ProductConditionFields {
 		acf_add_local_field_group(
 			array(
 				'key'                   => self::GROUP_KEY,
-				'title'                 => __( 'Qutlet — stan i zawartość produktu', 'qutlet-core' ),
+				'title'                 => __( 'Stan produktu', 'qutlet-core' ),
 				'fields'                => array(
 					array(
 						'key'          => self::FIELD_KEY_ALLEGRO_STAN_RAW,
@@ -175,47 +173,6 @@ final class ProductConditionFields {
 						'new_lines'    => '',
 						'esc_html'     => 1,
 					),
-					array(
-						'key'           => 'field_qutlet_zawartosc_zestawu_pozycje',
-						'label'         => __( 'Co w przesyłce', 'qutlet-core' ),
-						'name'          => 'zawartosc_zestawu_pozycje',
-						'type'          => 'repeater',
-						'instructions'  => __( 'Pozycje zestawu — jeden wiersz = jedna pozycja. Zdjęcie zasila karuzelę „Co w przesyłce" (brak zdjęcia → pozycja trafia tylko do checklisty). Pusty repeater → motyw nie renderuje zakładki „Co w przesyłce".', 'qutlet-core' ),
-						'required'      => 0,
-						'layout'        => 'table',
-						'button_label'  => __( 'Dodaj pozycję', 'qutlet-core' ),
-						'sub_fields'    => array(
-							array(
-								'key'           => 'field_qutlet_zawartosc_zestawu_zdjecie',
-								'label'         => __( 'Zdjęcie', 'qutlet-core' ),
-								'name'          => 'zdjecie',
-								'type'          => 'image',
-								'instructions'  => __( 'Opcjonalne — bez zdjęcia pozycja pojawia się tylko w checkliście, nie w karuzeli.', 'qutlet-core' ),
-								'required'      => 0,
-								'return_format' => 'id',
-								'preview_size'  => 'thumbnail',
-								'library'       => 'all',
-							),
-							array(
-								'key'          => 'field_qutlet_zawartosc_zestawu_etykieta',
-								'label'        => __( 'Etykieta', 'qutlet-core' ),
-								'name'         => 'etykieta',
-								'type'         => 'text',
-								'instructions' => '',
-								'required'     => 1,
-							),
-							array(
-								'key'           => 'field_qutlet_zawartosc_zestawu_w_zestawie',
-								'label'         => __( 'W zestawie', 'qutlet-core' ),
-								'name'          => 'w_zestawie',
-								'type'          => 'true_false',
-								'instructions'  => __( 'Zaznaczone = pozycja jest w zestawie (ikona check); odznaczone = brakuje (ikona cross).', 'qutlet-core' ),
-								'required'      => 0,
-								'default_value' => 1,
-								'ui'            => 1,
-							),
-						),
-					),
 				),
 				'location'              => array(
 					array(
@@ -232,7 +189,7 @@ final class ProductConditionFields {
 				'label_placement'       => 'top',
 				'instruction_placement' => 'label',
 				'active'                => true,
-				'description'           => __( 'Pola stanu i zawartości zestawu — rejestruje qutlet-core (P-1.2).', 'qutlet-core' ),
+				'description'           => __( 'Pola stanu produktu — rejestruje qutlet-core (P-1.2).', 'qutlet-core' ),
 				'show_in_rest'          => 0,
 			)
 		);
