@@ -145,6 +145,11 @@ function bootstrap(): void {
 	// (D-17.3, read-only) — bez zmiany logiki zapisu żadnego z pól.
 	ProductReviewWizard\ProductReviewWizard::init();
 
+	// ProductEditorLayout (P-21.1b, D-21.1.1): docelowa kolejność metaboxów na
+	// edycji produktu — seed `meta-box-order_product` (patrz docblok klasy,
+	// czemu priorytety add_meta_box() same nie wystarczają).
+	ProductEditorLayout\MetaBoxOrder::init();
+
 	/*
 	 * ProductInfo (P-13.3a, D-13.G3): jednorazowy backfill wycofanego pola ACF `opis`
 	 * → natywne `post_content`, na produktach zsynchronizowanych PRZED tym punktem.
