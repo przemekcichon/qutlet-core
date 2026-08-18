@@ -39,6 +39,14 @@ namespace Qutlet\Core\ProductInfo;
  * Mechanizm: `acf_add_local_field_group()` w PHP (wzorzec P-1.2 / P-1.3). Kod = źródło
  * prawdy; pole wersjonowane, niezależne od zapisywalnego folderu acf-json. `name` pola =
  * `meta_key` w bazie — MUSI być zgodne z kontraktem (motyw czyta ten literał).
+ *
+ * Render (P-20.4a, D-20.3/D-20.G3): grupa NIE renderuje się we własnym metaboksie ACF —
+ * {@see self::remove_own_metabox()} zdejmuje go z ekranu edycji produktu (wzorzec 1:1
+ * {@see \Qutlet\Core\AiRewrite\PromptOverrideField::remove_own_metabox()}, D-13.6.1).
+ * `qutlet-ai` renderuje pole WEWNĄTRZ scalonego metaboksu „Nazwa produktu (AI)"
+ * ({@see \Qutlet\Ai\AiRewrite\TitleGenerationMetaBox}, P-20.4b), wołając publiczną
+ * {@see self::render_field()} — NIE funkcje ACF bezpośrednio, z tego samego powodu co
+ * `PromptOverrideField` (`qutlet-ai` bez twardej zależności na ACF Pro, D-G5).
  */
 final class RewrittenFields {
 
@@ -46,6 +54,12 @@ final class RewrittenFields {
 	 * Klucz grupy pól (ACF wymaga unikalnego klucza `group_…`).
 	 */
 	private const GROUP_KEY = 'group_qutlet_product_info';
+
+	/**
+	 * Ekran (typ posta), na którym pole żyje — produkt WooCommerce. Też ekran,
+	 * z którego zdejmujemy własny metabox ACF (patrz {@see self::remove_own_metabox()}).
+	 */
+	private const SCREEN = 'product';
 
 	/**
 	 * Wpina rejestrację na `acf/init` — moment gotowości ACF na
@@ -56,6 +70,12 @@ final class RewrittenFields {
 	 */
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
+
+		// Priorytet 20 — PO domyślnym (10) hooku, na którym ACF rejestruje WŁASNE
+		// metaboxy (`ACF_Form_Post::add_meta_boxes()`), wzorem
+		// `PromptOverrideField::init()` (D-13.6.1) — metabox ACF musi istnieć w
+		// `$wp_meta_boxes` w momencie, w którym go zdejmujemy.
+		add_action( 'add_meta_boxes', array( self::class, 'remove_own_metabox' ), 20 );
 	}
 
 	/**
@@ -71,10 +91,10 @@ final class RewrittenFields {
 				'fields'                => array(
 					array(
 						'key'          => 'field_qutlet_podnazwa',
-						'label'        => __( 'Podnazwa', 'qutlet-core' ),
+						'label'        => __( 'Druga linia nazwy produktu', 'qutlet-core' ),
 						'name'         => 'podnazwa',
 						'type'         => 'text',
-						'instructions' => __( 'Druga część nazwy, gdy AI rozbije zbyt długą oryginalną nazwę Allegro na tytuł (post_title) + podnazwę. Redagowalna ręcznie; sync z Allegro jej NIE nadpisuje. Puste → motyw pokazuje sam tytuł.', 'qutlet-core' ),
+						'instructions' => __( 'Druga linia nazwy, gdy AI rozbije zbyt długą oryginalną nazwę Allegro na tytuł (post_title) + tę drugą linię. Redagowalna ręcznie; sync z Allegro jej NIE nadpisuje. Puste → motyw pokazuje sam tytuł.', 'qutlet-core' ),
 						'required'     => 0,
 					),
 				),
@@ -100,15 +120,55 @@ final class RewrittenFields {
 	}
 
 	/**
-	 * ID metaboxa renderowanego przez ACF dla tej grupy (`acf-{key}`, wzorzec
-	 * potwierdzony w `Acf_Form_Post::add_meta_boxes()`,
-	 * `includes/forms/form-post.php` w ACF PRO). Publiczne dla konsumentów
-	 * spoza slice'a (P-17.2 — kreator identyfikuje box po DOM id, bez
-	 * zgadywania literału).
+	 * Zdejmuje z ekranu edycji produktu metabox, który ACF automatycznie tworzy
+	 * dla grupy `self::GROUP_KEY` (ID `acf-{key grupy}`, `add_meta_box()` w
+	 * `ACF_Form_Post::add_meta_boxes()`) — wzorzec 1:1
+	 * {@see \Qutlet\Core\AiRewrite\PromptOverrideField::remove_own_metabox()}
+	 * (D-13.6.1). Zdjęcie metaboxa NIE wpływa na zapis — patrz uzasadnienie w
+	 * `PromptOverrideField`. Render przenosi się do `qutlet-ai`
+	 * ({@see self::render_field()}, P-20.4a/P-20.4b, D-20.3).
 	 *
-	 * @return string
+	 * @param string $post_type Typ posta bieżącego ekranu edycji.
+	 * @return void
 	 */
-	public static function metabox_id(): string {
-		return 'acf-' . self::GROUP_KEY;
+	public static function remove_own_metabox( string $post_type ): void {
+		if ( self::SCREEN !== $post_type ) {
+			return;
+		}
+
+		remove_meta_box( 'acf-' . self::GROUP_KEY, self::SCREEN, 'normal' );
+	}
+
+	/**
+	 * Renderuje pole `podnazwa` (edytowalny input, z etykietą i instrukcją) w
+	 * miejscu wywołania — dziś z metaboksu `qutlet-ai` „Nazwa produktu (AI)"
+	 * ({@see \Qutlet\Ai\AiRewrite\TitleGenerationMetaBox}, P-20.4b). Wzorzec 1:1
+	 * {@see \Qutlet\Core\AiRewrite\PromptOverrideField::render_field()} — patrz
+	 * tamten docblock po pełne uzasadnienie mechanizmu i `function_exists()`
+	 * guard.
+	 *
+	 * Publiczna metoda, NIE hook WP — `qutlet-ai` importuje tę klasę i woła
+	 * metodę wprost (hard-dependuje na core, D-G5).
+	 *
+	 * @param int $product_id ID produktu.
+	 * @return void
+	 */
+	public static function render_field( int $product_id ): void {
+		if ( ! function_exists( 'acf_get_fields' ) || ! function_exists( 'acf_render_fields' ) ) {
+			return;
+		}
+
+		$field_group = acf_get_field_group( self::GROUP_KEY );
+		$fields      = acf_get_fields( self::GROUP_KEY );
+
+		if ( array() === $fields ) {
+			return;
+		}
+
+		$instruction_placement = is_array( $field_group ) && isset( $field_group['instruction_placement'] )
+			? (string) $field_group['instruction_placement']
+			: 'label';
+
+		acf_render_fields( $fields, $product_id, 'div', $instruction_placement );
 	}
 }
