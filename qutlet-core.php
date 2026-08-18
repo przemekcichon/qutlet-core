@@ -121,6 +121,12 @@ function bootstrap(): void {
 	// core rejestruje pole, logikę generacji niesie qutlet-ai, ta sama nazwa slice'a).
 	AiRewrite\PromptOverrideField::init();
 
+	// AiRewrite (P-20.6a, D-20.6/D-20.G4): zdjęcie natywnego wsparcia edytora
+	// treści dla `product` — umożliwia scalenie natywnego boksu „Opis produktu"
+	// z metaboksem `qutlet-ai` „Generacja AI (przeróbka)" (P-20.6b). MUSI wejść
+	// razem/bezpośrednio po merge'u P-20.6b — patrz docblock ContentEditorSupport.
+	AiRewrite\ContentEditorSupport::init();
+
 	// ProductFilters (P-8.3b, D-8.3b.2): modyfikacja głównego zapytania archiwum
 	// (filtr klasy stanu, sortowanie „Największy rabat") + liczniki facetów/granice
 	// ceny. Render formularza — qutlet-theme, ta sama nazwa slice'a.
