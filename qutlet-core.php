@@ -85,6 +85,11 @@ function bootstrap(): void {
 	// Product Data (nie ACF), ten sam mechanizm co ProductDiscountRateField.
 	ProductCondition\MarketPriceField::init();
 
+	// AllegroChannel (P-20.7b, D-20.8): cena Allegro — natywna zakładka General
+	// Product Data (nie ACF już), priorytet niższy niż MarketPriceField, żeby
+	// wyrenderować się nad nią na tym samym hooku.
+	AllegroChannel\AllegroPriceField::init();
+
 	// ProductInfo (P-5.1b): warstwa surowa (prywatne meta z Allegro) + przerobiona
 	// (opis ACF). Specyfikacja przerobiona = natywne atrybuty WC (bez rejestracji).
 	ProductInfo\RawLayerMeta::init();

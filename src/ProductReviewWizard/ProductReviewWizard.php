@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace Qutlet\Core\ProductReviewWizard;
 
 use Qutlet\Core\AllegroChannel\AllegroChannelFields;
+use Qutlet\Core\AllegroChannel\AllegroPriceField;
 use Qutlet\Core\Pricing\DiscountRate;
 use Qutlet\Core\ProductCondition\MarketPriceField;
 use Qutlet\Core\ProductCondition\ProductConditionFields;
@@ -138,14 +139,18 @@ final class ProductReviewWizard {
 	 * Konfiguracja 6 kroków kreatora — dla każdego kroku lista selektorów CSS
 	 * węzłów DOM do fizycznego przeniesienia do karty kreatora (JS). Kroki 1,
 	 * 2, 4, 5, 6 wskazują CAŁE metaboxy (po DOM id); krok 3 wskazuje TYLKO
-	 * dwa konkretne wiersze pól w natywnym Product Data (nie cały box Woo,
+	 * konkretne wiersze pól w natywnym Product Data (nie cały box Woo,
 	 * zgodnie z opisem punktu planu — „pola natywne Woo... przeniesione
-	 * wizualnie do kroku 3").
+	 * wizualnie do kroku 3"). `AllegroPriceField::META_KEY` dołączony tu
+	 * (FAZA 20/P-20.7b) — pole opuściło metabox „Kanał Allegro" (krok 5) na
+	 * rzecz natywnego Product Data, więc krok 3 jest teraz właściwym miejscem
+	 * jego przeglądu, nie krok 5.
 	 *
 	 * Klasa wiersza pola Woo (`woocommerce_wp_text_input()`,
 	 * `wc-meta-box-functions.php`) to zawsze `{$field['id']}_field` — literały
 	 * budujemy z publicznych stałych meta_key ({@see DiscountRate::META_OVERRIDE},
-	 * {@see MarketPriceField::META_KEY}), nie duplikujemy ich jako string.
+	 * {@see MarketPriceField::META_KEY}, {@see AllegroPriceField::META_KEY}),
+	 * nie duplikujemy ich jako string.
 	 *
 	 * @return array<int, array{title: string, selectors: array<int, string>}>
 	 */
@@ -164,6 +169,7 @@ final class ProductReviewWizard {
 				'selectors' => array(
 					'.' . DiscountRate::META_OVERRIDE . '_field',
 					'.' . MarketPriceField::META_KEY . '_field',
+					'.' . AllegroPriceField::META_KEY . '_field',
 				),
 			),
 			array(
