@@ -90,7 +90,7 @@ final class PromptOverrideField {
 				'fields'                => array(
 					array(
 						'key'          => 'field_qutlet_prompt_ai',
-						'label'        => __( 'Prompt AI (nadpisanie)', 'qutlet-core' ),
+						'label'        => __( 'Prompt lokalny', 'qutlet-core' ),
 						'name'         => 'prompt_ai',
 						'type'         => 'textarea',
 						'instructions' => __( 'Nadpisuje globalny prompt (ustawienie qutlet-ai) dla tego produktu przy generowaniu przerobionego opisu. Puste → używany prompt globalny.', 'qutlet-core' ),
