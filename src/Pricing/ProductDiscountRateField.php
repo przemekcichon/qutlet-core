@@ -52,7 +52,7 @@ final class ProductDiscountRateField {
 				'id'          => DiscountRate::META_OVERRIDE,
 				'label'       => __( 'Stawka rabatu Qutlet (%)', 'qutlet-core' ),
 				'desc_tip'    => true,
-				'description' => __( 'Nadpisuje globalną stawkę rabatu (WooCommerce → Qutlet — stawka rabatu) dla tego produktu. Puste → używana globalna. Cena sklepu _price jest przeliczana przy imporcie z Allegro.', 'qutlet-core' ),
+				'description' => __( 'Nadpisuje globalną stawkę rabatu (WooCommerce → Stawka rabatu) dla tego produktu. Puste → używana globalna. Cena sklepu _price jest przeliczana przy imporcie z Allegro.', 'qutlet-core' ),
 				'data_type'   => 'decimal',
 			)
 		);
