@@ -14,7 +14,6 @@ use Qutlet\Core\AllegroChannel\AllegroChannelFields;
 use Qutlet\Core\Pricing\DiscountRate;
 use Qutlet\Core\ProductCondition\MarketPriceField;
 use Qutlet\Core\ProductCondition\ProductConditionFields;
-use Qutlet\Core\ProductInfo\RewrittenFields;
 use WP_Post;
 
 /**
@@ -153,7 +152,7 @@ final class ProductReviewWizard {
 		return array(
 			array(
 				'title'     => __( 'Nazwa', 'qutlet-core' ),
-				'selectors' => array( '#' . self::AI_TITLE_METABOX_ID, '#' . RewrittenFields::metabox_id() ),
+				'selectors' => array( '#' . self::AI_TITLE_METABOX_ID ),
 			),
 			array(
 				'title'     => __( 'Opis', 'qutlet-core' ),
