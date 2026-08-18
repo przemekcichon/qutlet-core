@@ -19,8 +19,14 @@ namespace Qutlet\Core\AllegroChannel;
  *
  * Pola (literały z `docs/kontrakt-danych.md` §4 — VERBATIM, case-sensitive):
  * - `allegro_wlaczone` — true/false, nieopcjonalne (domyślnie false).
- * - `allegro_url`      — url, opcjonalne.
- * - `cena_allegro`     — number (PLN), opcjonalne.
+ * - `allegro_url`      — meta zapisywana przez sync (D-9.1), tu WYŁĄCZNIE
+ *   podglądem read-only (typ ACF `message`, FAZA 20/P-20.7b/D-20.10) —
+ *   patrz {@see self::FIELD_KEY_ALLEGRO_URL_DISPLAY}.
+ *
+ * `cena_allegro` NIE jest już tu rejestrowane (FAZA 20/P-20.7b, D-20.8) —
+ * przeniesione do natywnej zakładki „Ogólne" Product Data, ten sam meta_key,
+ * ten sam mechanizm co `cena_rynkowa_nowego` ({@see
+ * \Qutlet\Core\ProductCondition\MarketPriceField}) — patrz {@see AllegroPriceField}.
  *
  * Wartości liczone (kontrakt §6) — nie tworzymy dla nich pól: nota „Cena wyższa
  * o ~X%" jest liczona przez motyw z `cena_allegro` vs cena sprzedaży. Korzyści
@@ -40,14 +46,29 @@ final class AllegroChannelFields {
 	private const GROUP_KEY = 'group_qutlet_allegro_channel';
 
 	/**
+	 * Klucz pola read-only (typ ACF `message`, FAZA 20/P-20.7b/D-20.10) —
+	 * podgląd `allegro_url` jako klikalny link. Filtr {@see
+	 * self::inject_allegro_url_message()} dopasowuje po TYM kluczu, bo
+	 * `acf/pre_render_field` jest GLOBALNY (fires dla KAŻDEGO pola KAŻDEJ
+	 * grupy w adminie) — bez tego guardu ingerowałby we wszystkie pola w witrynie.
+	 */
+	private const FIELD_KEY_ALLEGRO_URL_DISPLAY = 'field_qutlet_allegro_url_display';
+
+	/**
 	 * Wpina rejestrację na `acf/init` — moment, w którym ACF jest gotowe na
 	 * `acf_add_local_field_group()` (zalecenie ACF). Wołane z bootstrapu core
 	 * (na `plugins_loaded`, po sprawdzeniu twardych zależności — patrz D-G5).
+	 *
+	 * `acf/pre_render_field` (FAZA 20/P-20.7b, wzorzec {@see
+	 * \Qutlet\Core\ProductCondition\ProductConditionFields::inject_condition_raw_message()})
+	 * dopisuje treść pola-komunikatu {@see self::FIELD_KEY_ALLEGRO_URL_DISPLAY}
+	 * PRZED renderem.
 	 *
 	 * @return void
 	 */
 	public static function init(): void {
 		add_action( 'acf/init', array( self::class, 'register' ) );
+		add_filter( 'acf/pre_render_field', array( self::class, 'inject_allegro_url_message' ), 10, 2 );
 	}
 
 	/**
@@ -59,7 +80,7 @@ final class AllegroChannelFields {
 		acf_add_local_field_group(
 			array(
 				'key'                   => self::GROUP_KEY,
-				'title'                 => __( 'Qutlet — kanał Allegro', 'qutlet-core' ),
+				'title'                 => __( 'Kanał Allegro', 'qutlet-core' ),
 				'fields'                => array(
 					array(
 						// `allegro_wlaczone` jest zawsze obecne (true_false zwraca 0/1),
@@ -75,25 +96,15 @@ final class AllegroChannelFields {
 						'ui'            => 1,
 					),
 					array(
-						'key'          => 'field_qutlet_allegro_url',
-						'label'        => __( 'URL oferty Allegro', 'qutlet-core' ),
-						'name'         => 'allegro_url',
-						'type'         => 'url',
-						'instructions' => __( 'Link do oferty na Allegro. Puste → motyw przełącza układ na 2-kolumnowy (.info-2col), bez karty „Zwrot — Allegro".', 'qutlet-core' ),
-						'required'     => 0,
-						'placeholder'  => '',
-					),
-					array(
-						'key'          => 'field_qutlet_cena_allegro',
-						'label'        => __( 'Cena Allegro (PLN)', 'qutlet-core' ),
-						'name'         => 'cena_allegro',
-						'type'         => 'number',
-						'instructions' => __( 'Cena kanału Allegro pokazywana na stronie produktu. Nota „Cena wyższa o ~X%" jest liczona przez motyw (kontrakt §6), nie przechowywana.', 'qutlet-core' ),
-						'required'     => 0,
-						'min'          => 0,
-						'step'         => 'any',
-						'append'       => 'zł',
-						'placeholder'  => '',
+						'key'       => self::FIELD_KEY_ALLEGRO_URL_DISPLAY,
+						'label'     => __( 'URL oferty Allegro', 'qutlet-core' ),
+						'name'      => 'allegro_url_display',
+						'type'      => 'message',
+						// Treść dopisywana dynamicznie — patrz self::inject_allegro_url_message().
+						'message'   => '',
+						'new_lines' => '',
+						// Link budowany z surowej wartości `allegro_url` — escapujemy przy renderze.
+						'esc_html'  => 0,
 					),
 				),
 				'location'              => array(
@@ -128,5 +139,55 @@ final class AllegroChannelFields {
 	 */
 	public static function metabox_id(): string {
 		return 'acf-' . self::GROUP_KEY;
+	}
+
+	/**
+	 * Dopisuje treść pola-komunikatu {@see self::FIELD_KEY_ALLEGRO_URL_DISPLAY}
+	 * TUŻ PRZED renderem (FAZA 20/P-20.7b, D-20.10). Filtr jest GLOBALNY (fires
+	 * dla każdego pola ACF w adminie) — pierwszy warunek odsiewa wszystko, co nie
+	 * jest naszym polem, więc reszta witryny (inne grupy, options page,
+	 * użytkownicy) nie jest tym dotknięta.
+	 *
+	 * @param array<string,mixed> $field   Definicja pola ACF przed renderem.
+	 * @param int|string          $post_id ID kontekstu formularza ACF (tu: ID produktu).
+	 * @return array<string,mixed>
+	 */
+	public static function inject_allegro_url_message( array $field, $post_id ): array {
+		if ( self::FIELD_KEY_ALLEGRO_URL_DISPLAY !== ( $field['key'] ?? null ) ) {
+			return $field;
+		}
+
+		$product_id       = is_numeric( $post_id ) ? (int) $post_id : 0;
+		$field['message'] = self::allegro_url_message( $product_id );
+
+		return $field;
+	}
+
+	/**
+	 * Treść komunikatu: klikalny link do `allegro_url` albo nota o jego braku.
+	 *
+	 * `allegro_url` jest sync-owned (D-9.1) — zapisuje ją
+	 * `qutlet-allegro\OfferSync\ProductWriter` przez `update_post_meta()`
+	 * (D-20.9, po nazwie, NIE po kluczu ACF), więc czytamy ją tu tym samym,
+	 * zwykłym `get_post_meta()`.
+	 *
+	 * @param int $product_id ID produktu (0 = brak kontekstu, np. formularz poza ekranem edycji produktu).
+	 * @return string
+	 */
+	private static function allegro_url_message( int $product_id ): string {
+		if ( $product_id <= 0 ) {
+			return esc_html__( 'Brak kontekstu produktu.', 'qutlet-core' );
+		}
+
+		$url = get_post_meta( $product_id, 'allegro_url', true );
+
+		if ( ! is_string( $url ) || '' === trim( $url ) ) {
+			return esc_html__( 'Brak zapisanego URL-a oferty — produkt nie pochodzi z Allegro (utworzony ręcznie) albo nie był jeszcze zsynchronizowany.', 'qutlet-core' );
+		}
+
+		return sprintf(
+			'<a href="%1$s" target="_blank" rel="noopener noreferrer">%1$s</a>',
+			esc_url( $url )
+		);
 	}
 }
