@@ -56,6 +56,17 @@ final class RawLayerMetaBox {
 	}
 
 	/**
+	 * ID metaboxa. Publiczne dla konsumentów spoza slice'a (P-21.1b — seed
+	 * kolejności metaboxów identyfikuje box po DOM id, bez zgadywania literału,
+	 * wzorem {@see \Qutlet\Core\ProductCondition\ProductConditionFields::metabox_id()}).
+	 *
+	 * @return string
+	 */
+	public static function metabox_id(): string {
+		return self::META_BOX_ID;
+	}
+
+	/**
 	 * Rejestruje metabox tylko dla ekranu edycji produktu.
 	 *
 	 * @param string $post_type Typ posta bieżącego ekranu edycji.
@@ -68,7 +79,7 @@ final class RawLayerMetaBox {
 
 		add_meta_box(
 			self::META_BOX_ID,
-			__( 'Qutlet — warstwa surowa z Allegro (podgląd, tylko do odczytu)', 'qutlet-core' ),
+			__( 'Podgląd opisu z Allegro', 'qutlet-core' ),
 			array( self::class, 'render' ),
 			self::SCREEN,
 			'normal',

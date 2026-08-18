@@ -65,7 +65,7 @@ final class CategoryPreviewMetaBox {
 
 		add_meta_box(
 			self::META_BOX_ID,
-			__( 'Qutlet — kategoria (podgląd)', 'qutlet-core' ),
+			__( 'Mapowanie kategorii', 'qutlet-core' ),
 			array( self::class, 'render' ),
 			self::SCREEN,
 			'side',
