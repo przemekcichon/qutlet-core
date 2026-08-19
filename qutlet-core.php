@@ -79,11 +79,12 @@ function bootstrap(): void {
 	// patrz docblocki ProductConditionFields/ClassDefinitionsTaxonomy).
 	ProductCondition\ClassDefinitionsTaxonomy::init();
 
-	// ProductCondition (P-22.4b, D-22.4.2): strona ustawień „Zarządzanie
-	// stanami" — dziś jedno pole (tekst zastępczy „co w zestawie" dla
-	// widgetu „Inne sztuki tego modelu", qutlet-theme). Osobna od Allegro-
-	// specyficznej `qutlet-allegro\OfferSync\ConditionMapPage`.
-	ProductCondition\ConditionManagementSettingsPage::init();
+	// ProductCondition (P-22.4b, D-22.4.2; przemianowana P-22.5b, D-22.5.4):
+	// strona ustawień „Treści sklepu" — tekst zastępczy „co w zestawie" dla
+	// widgetu „Inne sztuki tego modelu" (qutlet-theme) + 10 tekstów polityk
+	// zwrotu/wysyłki strony produktu. Osobna od Allegro-specyficznej
+	// `qutlet-allegro\OfferSync\ConditionMapPage`.
+	ProductCondition\StoreContentSettingsPage::init();
 	AllegroChannel\AllegroChannelFields::init();
 	ReadingTime\ReadingTimeMeta::init();
 
@@ -179,6 +180,13 @@ function bootstrap(): void {
 		 * pola na ACF `taxonomy`.
 		 */
 		\WP_CLI::add_command( 'qutlet-core backfill-klasa-stanu-relacja', ProductCondition\BackfillKlasaStanuRelationCommand::class );
+
+		/*
+		 * ProductCondition (P-22.5, D-22.5.1/D-22.5.2): jednorazowy backfill
+		 * dzisiejszej treści do nowych pól tekstów polityk (zwrot/gwarancja/
+		 * wysyłka) — patrz docblock komendy.
+		 */
+		\WP_CLI::add_command( 'qutlet-core backfill-teksty-polityk-klasa-stanu', ProductCondition\BackfillPolicyTextsCommand::class );
 	}
 }
 

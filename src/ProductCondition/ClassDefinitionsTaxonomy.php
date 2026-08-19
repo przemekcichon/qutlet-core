@@ -211,6 +211,22 @@ final class ClassDefinitionsTaxonomy {
 						'min'          => 0,
 						'step'         => 1,
 					),
+					array(
+						'key'          => 'field_qutlet_klasa_gwarancja_opis',
+						'label'        => __( 'Gwarancja — opis', 'qutlet-core' ),
+						'name'         => 'gwarancja_opis',
+						'type'         => 'textarea',
+						'instructions' => __( 'Zdanie-otoczka w akordeonie „Gwarancja i reklamacje”. Użyj placeholdera {okres} — motyw podstawia sformatowany okres gwarancji (np. „12 miesięcy”). Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
+						'required'     => 0,
+					),
+					array(
+						'key'          => 'field_qutlet_klasa_reklamacja_opis',
+						'label'        => __( 'Reklamacja — opis', 'qutlet-core' ),
+						'name'         => 'reklamacja_opis',
+						'type'         => 'textarea',
+						'instructions' => __( 'Zdanie w akordeonie „Gwarancja i reklamacje”, karta „Prawo do reklamacji”. Użyj placeholdera {okres} — motyw podstawia sformatowany okres reklamacji. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
+						'required'     => 0,
+					),
 				),
 				'location'              => array(
 					array(
@@ -287,6 +303,8 @@ final class ClassDefinitionsTaxonomy {
 	 *     dlaczego_taniej: string,
 	 *     okres_gwarancji_miesiace: int,
 	 *     okres_reklamacji_miesiace: int,
+	 *     gwarancja_opis: string,
+	 *     reklamacja_opis: string,
 	 * }>
 	 */
 	public static function all(): array {
@@ -311,15 +329,17 @@ final class ClassDefinitionsTaxonomy {
 			}
 
 			$rows[ $kod ] = array(
-				'term_id'                   => $term->term_id,
-				'nazwa'                     => $term->name,
-				'kolor'                     => (string) get_term_meta( $term->term_id, 'kolor', true ),
-				'opis_chip'                 => (string) get_term_meta( $term->term_id, 'opis_chip', true ),
-				'stan_wizualny'             => (string) get_term_meta( $term->term_id, 'stan_wizualny', true ),
-				'charakterystyka'           => (string) get_term_meta( $term->term_id, 'charakterystyka', true ),
-				'dlaczego_taniej'           => (string) get_term_meta( $term->term_id, 'dlaczego_taniej', true ),
-				'okres_gwarancji_miesiace'  => (int) get_term_meta( $term->term_id, 'okres_gwarancji_miesiace', true ),
-				'okres_reklamacji_miesiace' => (int) get_term_meta( $term->term_id, 'okres_reklamacji_miesiace', true ),
+				'term_id'                     => $term->term_id,
+				'nazwa'                       => $term->name,
+				'kolor'                       => (string) get_term_meta( $term->term_id, 'kolor', true ),
+				'opis_chip'                   => (string) get_term_meta( $term->term_id, 'opis_chip', true ),
+				'stan_wizualny'               => (string) get_term_meta( $term->term_id, 'stan_wizualny', true ),
+				'charakterystyka'             => (string) get_term_meta( $term->term_id, 'charakterystyka', true ),
+				'dlaczego_taniej'             => (string) get_term_meta( $term->term_id, 'dlaczego_taniej', true ),
+				'okres_gwarancji_miesiace'    => (int) get_term_meta( $term->term_id, 'okres_gwarancji_miesiace', true ),
+				'okres_reklamacji_miesiace'   => (int) get_term_meta( $term->term_id, 'okres_reklamacji_miesiace', true ),
+				'gwarancja_opis'              => (string) get_term_meta( $term->term_id, 'gwarancja_opis', true ),
+				'reklamacja_opis'             => (string) get_term_meta( $term->term_id, 'reklamacja_opis', true ),
 			);
 		}
 
@@ -332,7 +352,7 @@ final class ClassDefinitionsTaxonomy {
 	 * Jedna definicja po `kod` (join key) — `null`, gdy nieznana.
 	 *
 	 * @param string $kod Techniczny kod klasy (`A`-`D`, `Nowe`) — term meta `kod`.
-	 * @return array{term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int}|null
+	 * @return array{term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, gwarancja_opis: string, reklamacja_opis: string}|null
 	 */
 	public static function get( string $kod ): ?array {
 		return self::all()[ $kod ] ?? null;
@@ -358,7 +378,7 @@ final class ClassDefinitionsTaxonomy {
 	 * operacyjne).
 	 *
 	 * @param int $product_id ID produktu.
-	 * @return array{kod: string, term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int}|null
+	 * @return array{kod: string, term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, gwarancja_opis: string, reklamacja_opis: string}|null
 	 */
 	public static function for_product( int $product_id ): ?array {
 		$terms = get_the_terms( $product_id, self::TAXONOMY );
