@@ -15,26 +15,35 @@ use function WP_CLI\Utils\get_flag_value;
 
 /**
  * `wp qutlet-core backfill-teksty-polityk-klasa-stanu` — jednorazowo wypełnia
- * 12 nowych pól tekstów polityk ({@see ClassDefinitionsTaxonomy::register_fields()},
- * D-22.5.1/D-22.5.2) dzisiejszą treścią, dziś zaszytą jako hardkodowane
- * literały w `qutlet-theme\content-single-product.php` (ground-truth
- * `docs/plan.md` P-22.5, sesja 2026-08-19). Seedowana treść jest identyczna
- * dla wszystkich klas — różnicowanie per klasa to przyszła praca redakcyjna
- * admina (ten sam wzorzec co `dlaczego_taniej`, P-12.1a).
+ * 2 pola tekstów polityk per klasa (`gwarancja_opis`/`reklamacja_opis`,
+ * {@see ClassDefinitionsTaxonomy::register_fields()}, D-22.5.1/D-22.5.2)
+ * dzisiejszą treścią, dziś zaszytą jako hardkodowane literały w
+ * `qutlet-theme\content-single-product.php` (ground-truth `docs/plan.md`
+ * P-22.5, sesja 2026-08-19). Seedowana treść jest identyczna dla wszystkich
+ * klas — różnicowanie per klasa to przyszła praca redakcyjna admina (ten sam
+ * wzorzec co `dlaczego_taniej`, P-12.1a).
  *
- * **REWIZJA (recenzja P-22.5, sesja 2026-08-19, decyzja użytkownika):**
- * pierwotna wersja celowała w sztywną listę kodów `A`/`B`/`C`/`D`
- * (wzorem {@see SeedClassDefinitionsCommand}) — recenzja ujawniła (zweryfikowane
- * `wp term list klasa_stanu_definicja`/`wp term meta list` na Localu), że
- * ŻADNA klasa o kodzie A-D nie istnieje dziś na tym środowisku: taksonomia
- * niesie WYŁĄCZNIE 7 realnych klas nazwanych surowymi wartościami Allegro
- * „Stan" (`Na części`/`Nowy`/`Nowy z defektem`/`Po zwrocie`/`Powystawowy`/
- * `Uszkodzony`/`Używany`), z term meta `kod` identycznym z `name` na każdej
- * (ten sam fakt, niezależnie ground-truthowany przy P-9.7, `docs/plan.md`).
- * Sztywna lista A-D była więc martwym kodem (zero efektu) na realnych danych.
- * Komenda iteruje teraz PO WSZYSTKICH klasach zwróconych przez
- * {@see ClassDefinitionsTaxonomy::all()} — niezależnie od tego, jak się dziś
- * nazywają / jaki mają `kod` — zamiast zakładać konkretny zestaw kodów.
+ * **REWIZJA D-22.5.4:** pierwotnie ta komenda seedowała 12 pól — 10 z nich
+ * PRZENIESIONO na opcje globalne (`StoreContentSettingsPage`, kontrakt §19.2)
+ * po decyzji użytkownika, że nie są związane z fizycznym stanem egzemplarza.
+ * Zostają WYŁĄCZNIE `gwarancja_opis`/`reklamacja_opis` — jedyne dwa już dziś
+ * sprzężone z inną wartością per-klasa (`okres_gwarancji_miesiace`/
+ * `okres_reklamacji_miesiace` przez placeholder `{okres}`).
+ *
+ * **REWIZJA D-22.5.3 (recenzja P-22.5, sesja 2026-08-19, decyzja
+ * użytkownika):** pierwotna wersja celowała w sztywną listę kodów
+ * `A`/`B`/`C`/`D` (wzorem {@see SeedClassDefinitionsCommand}) — recenzja
+ * ujawniła (zweryfikowane `wp term list klasa_stanu_definicja`/`wp term meta
+ * list` na Localu), że ŻADNA klasa o kodzie A-D nie istnieje dziś na tym
+ * środowisku: taksonomia niesie WYŁĄCZNIE 7 realnych klas nazwanych surowymi
+ * wartościami Allegro „Stan" (`Na części`/`Nowy`/`Nowy z defektem`/`Po
+ * zwrocie`/`Powystawowy`/`Uszkodzony`/`Używany`), z term meta `kod`
+ * identycznym z `name` na każdej (ten sam fakt, niezależnie ground-truthowany
+ * przy P-9.7, `docs/plan.md`). Sztywna lista A-D była więc martwym kodem
+ * (zero efektu) na realnych danych. Komenda iteruje teraz PO WSZYSTKICH
+ * klasach zwróconych przez {@see ClassDefinitionsTaxonomy::all()} —
+ * niezależnie od tego, jak się dziś nazywają / jaki mają `kod` — zamiast
+ * zakładać konkretny zestaw kodów.
  *
  * ## Idempotencja
  * Działa PO POLU, nie po termie: pole już wypełnione (niepuste) → pomijane,
@@ -56,18 +65,8 @@ final class BackfillPolicyTextsCommand {
 	 * @var array<string, string>
 	 */
 	private const SEED_DATA = array(
-		'zwrot_naglowek'               => '14 dni na zwrot',
-		'zwrot_tag_qutlet'             => 'Koszt po Twojej stronie',
-		'zwrot_tag_allegro'            => 'Możliwy bezpłatny',
-		'wysylka_naglowek'             => 'Wysyłka w 1 dzień roboczy',
-		'zwrot_opis_qutlet'            => 'W razie zwrotu produktu kupionego w naszym sklepie, koszty przesyłki zwrotnej pokrywasz sam.',
-		'zwrot_opis_allegro'           => 'Zwrot całkowicie bezpłatny przy wyborze Allegro Delivery oraz dla Allegrowiczów Smart.',
-		'wysylka_opis'                 => 'Wysyłamy w najbliższy dzień roboczy (sesja rano/popołudnie).',
-		'zwrot_akordeon_opis_qutlet'   => '14 dni na zmianę zdania. Koszt przesyłki zwrotnej po stronie kupującego.',
-		'zwrot_akordeon_opis_allegro'  => '14 dni na zmianę zdania. Zwrot bezpłatny — przy wyborze Allegro Delivery lub abonamentu Smart.',
-		'gwarancja_opis'               => '{okres} gwarancji na każdy produkt. Reklamacje realizujemy w naszym serwisie — szybko i bezproblemowo.',
-		'reklamacja_opis'              => '{okres} (zamiast ustawowych 2 lat — dopuszczalne dla towarów używanych, gdy kupujący zostanie wyraźnie poinformowany).',
-		'stan_uzywany_opis'            => 'Gwarancja i prawo do reklamacji są identyczne dla każdego egzemplarza.',
+		'gwarancja_opis'  => '{okres} gwarancji na każdy produkt. Reklamacje realizujemy w naszym serwisie — szybko i bezproblemowo.',
+		'reklamacja_opis' => '{okres} (zamiast ustawowych 2 lat — dopuszczalne dla towarów używanych, gdy kupujący zostanie wyraźnie poinformowany).',
 	);
 
 	/**

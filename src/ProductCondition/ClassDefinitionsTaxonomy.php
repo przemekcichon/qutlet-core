@@ -212,78 +212,6 @@ final class ClassDefinitionsTaxonomy {
 						'step'         => 1,
 					),
 					array(
-						'key'          => 'field_qutlet_klasa_zwrot_naglowek',
-						'label'        => __( 'Zwrot — nagłówek (perk)', 'qutlet-core' ),
-						'name'         => 'zwrot_naglowek',
-						'type'         => 'text',
-						'instructions' => __( '„14 dni na zwrot” — wspólny nagłówek dla obu kanałów zakupu. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_tag_qutlet',
-						'label'        => __( 'Zwrot — tag kanału Qutlet', 'qutlet-core' ),
-						'name'         => 'zwrot_tag_qutlet',
-						'type'         => 'text',
-						'instructions' => __( '„Koszt po Twojej stronie” — panel kanału Qutlet WYŁĄCZNIE. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_tag_allegro',
-						'label'        => __( 'Zwrot — tag kanału Allegro', 'qutlet-core' ),
-						'name'         => 'zwrot_tag_allegro',
-						'type'         => 'text',
-						'instructions' => __( '„Możliwy bezpłatny” — panel kanału Allegro WYŁĄCZNIE. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_wysylka_naglowek',
-						'label'        => __( 'Wysyłka — nagłówek (perk)', 'qutlet-core' ),
-						'name'         => 'wysylka_naglowek',
-						'type'         => 'text',
-						'instructions' => __( '„Wysyłka w 1 dzień roboczy” — wspólny nagłówek dla obu kanałów. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_opis_qutlet',
-						'label'        => __( 'Zwrot — opis kanału Qutlet', 'qutlet-core' ),
-						'name'         => 'zwrot_opis_qutlet',
-						'type'         => 'textarea',
-						'instructions' => __( 'Zdanie pod etykietą „Polityka zwrotów:” (etykieta zostaje statyczna w motywie) — panel kanału Qutlet. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_opis_allegro',
-						'label'        => __( 'Zwrot — opis kanału Allegro', 'qutlet-core' ),
-						'name'         => 'zwrot_opis_allegro',
-						'type'         => 'textarea',
-						'instructions' => __( 'Zdanie pod etykietą „Polityka zwrotów:” (etykieta zostaje statyczna w motywie) — panel kanału Allegro. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_wysylka_opis',
-						'label'        => __( 'Wysyłka — opis (akordeon)', 'qutlet-core' ),
-						'name'         => 'wysylka_opis',
-						'type'         => 'textarea',
-						'instructions' => __( 'Akordeon „Dostawa i zwroty”, karta „Szybka wysyłka”. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_akordeon_opis_qutlet',
-						'label'        => __( 'Zwrot — opis kanału Qutlet (akordeon)', 'qutlet-core' ),
-						'name'         => 'zwrot_akordeon_opis_qutlet',
-						'type'         => 'textarea',
-						'instructions' => __( 'Akordeon „Dostawa i zwroty”, karta zwrotu kanału Qutlet. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_zwrot_akordeon_opis_allegro',
-						'label'        => __( 'Zwrot — opis kanału Allegro (akordeon)', 'qutlet-core' ),
-						'name'         => 'zwrot_akordeon_opis_allegro',
-						'type'         => 'textarea',
-						'instructions' => __( 'Akordeon „Dostawa i zwroty”, karta „Zwrot — Allegro”. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
 						'key'          => 'field_qutlet_klasa_gwarancja_opis',
 						'label'        => __( 'Gwarancja — opis', 'qutlet-core' ),
 						'name'         => 'gwarancja_opis',
@@ -297,14 +225,6 @@ final class ClassDefinitionsTaxonomy {
 						'name'         => 'reklamacja_opis',
 						'type'         => 'textarea',
 						'instructions' => __( 'Zdanie w akordeonie „Gwarancja i reklamacje”, karta „Prawo do reklamacji”. Użyj placeholdera {okres} — motyw podstawia sformatowany okres reklamacji. Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
-						'required'     => 0,
-					),
-					array(
-						'key'          => 'field_qutlet_klasa_stan_uzywany_opis',
-						'label'        => __( 'Stan używany — zapewnienie', 'qutlet-core' ),
-						'name'         => 'stan_uzywany_opis',
-						'type'         => 'textarea',
-						'instructions' => __( 'Drugie zdanie w .know-fine (pierwsze, „Wszystkie produkty w Qutlet sprzedawane są jako używane.”, zostaje statyczne w motywie). Puste → motyw pokazuje dzisiejszy tekst domyślny.', 'qutlet-core' ),
 						'required'     => 0,
 					),
 				),
@@ -383,18 +303,8 @@ final class ClassDefinitionsTaxonomy {
 	 *     dlaczego_taniej: string,
 	 *     okres_gwarancji_miesiace: int,
 	 *     okres_reklamacji_miesiace: int,
-	 *     zwrot_naglowek: string,
-	 *     zwrot_tag_qutlet: string,
-	 *     zwrot_tag_allegro: string,
-	 *     wysylka_naglowek: string,
-	 *     zwrot_opis_qutlet: string,
-	 *     zwrot_opis_allegro: string,
-	 *     wysylka_opis: string,
-	 *     zwrot_akordeon_opis_qutlet: string,
-	 *     zwrot_akordeon_opis_allegro: string,
 	 *     gwarancja_opis: string,
 	 *     reklamacja_opis: string,
-	 *     stan_uzywany_opis: string,
 	 * }>
 	 */
 	public static function all(): array {
@@ -428,18 +338,8 @@ final class ClassDefinitionsTaxonomy {
 				'dlaczego_taniej'             => (string) get_term_meta( $term->term_id, 'dlaczego_taniej', true ),
 				'okres_gwarancji_miesiace'    => (int) get_term_meta( $term->term_id, 'okres_gwarancji_miesiace', true ),
 				'okres_reklamacji_miesiace'   => (int) get_term_meta( $term->term_id, 'okres_reklamacji_miesiace', true ),
-				'zwrot_naglowek'              => (string) get_term_meta( $term->term_id, 'zwrot_naglowek', true ),
-				'zwrot_tag_qutlet'            => (string) get_term_meta( $term->term_id, 'zwrot_tag_qutlet', true ),
-				'zwrot_tag_allegro'           => (string) get_term_meta( $term->term_id, 'zwrot_tag_allegro', true ),
-				'wysylka_naglowek'            => (string) get_term_meta( $term->term_id, 'wysylka_naglowek', true ),
-				'zwrot_opis_qutlet'           => (string) get_term_meta( $term->term_id, 'zwrot_opis_qutlet', true ),
-				'zwrot_opis_allegro'          => (string) get_term_meta( $term->term_id, 'zwrot_opis_allegro', true ),
-				'wysylka_opis'                => (string) get_term_meta( $term->term_id, 'wysylka_opis', true ),
-				'zwrot_akordeon_opis_qutlet'  => (string) get_term_meta( $term->term_id, 'zwrot_akordeon_opis_qutlet', true ),
-				'zwrot_akordeon_opis_allegro' => (string) get_term_meta( $term->term_id, 'zwrot_akordeon_opis_allegro', true ),
 				'gwarancja_opis'              => (string) get_term_meta( $term->term_id, 'gwarancja_opis', true ),
 				'reklamacja_opis'             => (string) get_term_meta( $term->term_id, 'reklamacja_opis', true ),
-				'stan_uzywany_opis'           => (string) get_term_meta( $term->term_id, 'stan_uzywany_opis', true ),
 			);
 		}
 
@@ -452,7 +352,7 @@ final class ClassDefinitionsTaxonomy {
 	 * Jedna definicja po `kod` (join key) — `null`, gdy nieznana.
 	 *
 	 * @param string $kod Techniczny kod klasy (`A`-`D`, `Nowe`) — term meta `kod`.
-	 * @return array{term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, zwrot_naglowek: string, zwrot_tag_qutlet: string, zwrot_tag_allegro: string, wysylka_naglowek: string, zwrot_opis_qutlet: string, zwrot_opis_allegro: string, wysylka_opis: string, zwrot_akordeon_opis_qutlet: string, zwrot_akordeon_opis_allegro: string, gwarancja_opis: string, reklamacja_opis: string, stan_uzywany_opis: string}|null
+	 * @return array{term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, gwarancja_opis: string, reklamacja_opis: string}|null
 	 */
 	public static function get( string $kod ): ?array {
 		return self::all()[ $kod ] ?? null;
@@ -478,7 +378,7 @@ final class ClassDefinitionsTaxonomy {
 	 * operacyjne).
 	 *
 	 * @param int $product_id ID produktu.
-	 * @return array{kod: string, term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, zwrot_naglowek: string, zwrot_tag_qutlet: string, zwrot_tag_allegro: string, wysylka_naglowek: string, zwrot_opis_qutlet: string, zwrot_opis_allegro: string, wysylka_opis: string, zwrot_akordeon_opis_qutlet: string, zwrot_akordeon_opis_allegro: string, gwarancja_opis: string, reklamacja_opis: string, stan_uzywany_opis: string}|null
+	 * @return array{kod: string, term_id: int, nazwa: string, kolor: string, opis_chip: string, stan_wizualny: string, charakterystyka: string, dlaczego_taniej: string, okres_gwarancji_miesiace: int, okres_reklamacji_miesiace: int, gwarancja_opis: string, reklamacja_opis: string}|null
 	 */
 	public static function for_product( int $product_id ): ?array {
 		$terms = get_the_terms( $product_id, self::TAXONOMY );
