@@ -179,6 +179,13 @@ function bootstrap(): void {
 		 * pola na ACF `taxonomy`.
 		 */
 		\WP_CLI::add_command( 'qutlet-core backfill-klasa-stanu-relacja', ProductCondition\BackfillKlasaStanuRelationCommand::class );
+
+		/*
+		 * ProductCondition (P-22.5, D-22.5.1/D-22.5.2): jednorazowy backfill
+		 * dzisiejszej treści do nowych pól tekstów polityk (zwrot/gwarancja/
+		 * wysyłka) — patrz docblock komendy.
+		 */
+		\WP_CLI::add_command( 'qutlet-core backfill-teksty-polityk-klasa-stanu', ProductCondition\BackfillPolicyTextsCommand::class );
 	}
 }
 
