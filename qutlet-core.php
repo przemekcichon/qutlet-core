@@ -78,6 +78,12 @@ function bootstrap(): void {
 	// term meta) — źródło `choices` pola `klasa_stanu` (D-1.2.1 REWIZJA,
 	// patrz docblocki ProductConditionFields/ClassDefinitionsTaxonomy).
 	ProductCondition\ClassDefinitionsTaxonomy::init();
+
+	// ProductCondition (P-22.4b, D-22.4.2): strona ustawień „Zarządzanie
+	// stanami" — dziś jedno pole (tekst zastępczy „co w zestawie" dla
+	// widgetu „Inne sztuki tego modelu", qutlet-theme). Osobna od Allegro-
+	// specyficznej `qutlet-allegro\OfferSync\ConditionMapPage`.
+	ProductCondition\ConditionManagementSettingsPage::init();
 	AllegroChannel\AllegroChannelFields::init();
 	ReadingTime\ReadingTimeMeta::init();
 
