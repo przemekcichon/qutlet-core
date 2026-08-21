@@ -139,6 +139,13 @@ function bootstrap(): void {
 	// ceny. Render formularza — qutlet-theme, ta sama nazwa slice'a.
 	ProductFilters\ProductFilterQuery::init();
 
+	// Cart (P-26.2, audyt bezpieczeństwa qutlet-theme, ustalenie #1): dane
+	// koszyka rozszerzające Store API WooCommerce (glue do Woo) — przeniesione
+	// z qutlet-theme (D-8.6a.1/D-12.G2 były świadomą decyzją tymczasową).
+	// Blocks integration/mini-koszyk headera zostają w qutlet-theme, ta sama
+	// nazwa slice'a w obu repo.
+	Cart\CartStoreApiData::init();
+
 	// HeaderMenu (P-16.2a, D-16.G1): taksonomia grup mega menu (kolumny) + pola
 	// ACF pozycji menu kategorii (`widoczna_na_belce`, `grupa_mega_menu`) —
 	// core rejestruje pola/taksonomię, qutlet-theme (P-16.2b) rejestruje
